@@ -5,8 +5,10 @@
 // You'll need to create an account at https://www.emailjs.com/ (they have a free tier)
 // Then create a service (e.g. Gmail, Outlook) and an email template
 const SERVICE_ID = 'service_kyceddb'; // User-provided service ID
-const ORDER_TEMPLATE_ID = 'template_2p1ejse'; // Template ID
-const CONFIRMATION_TEMPLATE_ID = 'template_2p1ejse'; // Using same template for now
+
+// User's actual template IDs
+const ORDER_TEMPLATE_ID = 'order_template'; // User's actual Order template ID
+const CONFIRMATION_TEMPLATE_ID = 'confirmation_template'; // User's actual Confirmation template ID
 const PUBLIC_KEY = 'ImIJIUQhlhqWByJGZ'; // User's actual public key
 
 // The latest EmailJS API endpoint
