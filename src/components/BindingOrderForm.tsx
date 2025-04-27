@@ -373,17 +373,103 @@ const BindingOrderForm = () => {
       return;
     }
     
-    // Here you would normally submit to a backend
-    toast.success("Your binding order has been submitted! We'll contact you shortly.");
+    setIsProcessing(true);
     
-    // Reset the form
-    setFiles([]);
-    setPricingInfo(null);
-    setPaymentProof(null);
-    setContactInfo({ email: "", phone: "" });
-    setBwCount(0);
-    setColorCount(0);
-    setSpecifications("");
+    try {
+      // Generate a unique order ID with timestamp
+      const orderId = `DC-B-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
+      // Get current date and time
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+      const timeStr = now.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true 
+      });
+      
+      // Create FormData for the API request
+      const formData = new FormData();
+      
+      // Add order type and ID
+      formData.append('orderType', 'binding');
+      formData.append('orderId', orderId);
+      
+      // Add contact information
+      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
+      formData.append('contactEmail', contactInfo.email);
+      formData.append('contactPhone', contactInfo.phone);
+      
+      // Add specifications as stringified JSON
+      const orderSpecifications = {
+        orderType: 'binding',
+        bindingType: bindingType,
+        paperType: paperGsm === "normal" ? "Normal Paper" : `Bond Paper ${paperGsm} GSM`,
+        bwPageCount: bwCount,
+        colorPageCount: colorCount,
+        copies: copies,
+        colorOption: colorOption,
+        coverColor: coverColor,
+        coverPrintType: coverPrintType,
+        specialInstructions: specifications,
+        totalPrice: pricingInfo?.totalPrice || 0
+      };
+      
+      formData.append('specifications', JSON.stringify(orderSpecifications));
+      
+      // Add timestamp
+      formData.append('timestamp', now.toISOString());
+      
+      // Add each file
+      files.forEach((file, index) => {
+        formData.append(`file-${index}`, file);
+      });
+      
+      // Add payment proof if provided
+      if (paymentProof) {
+        formData.append('paymentProof', paymentProof);
+      }
+      
+      // Send to the API
+      fetch('/api/orders/email', {
+        method: 'POST',
+        body: formData,
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to send order details');
+        }
+        return response.json();
+      })
+      .then(data => {
+        toast.success(`Your binding order #${orderId} has been submitted! We'll contact you shortly.`);
+        
+        // Reset the form
+        setFiles([]);
+        setPricingInfo(null);
+        setPaymentProof(null);
+        setContactInfo({ email: "", phone: "" });
+        setBwCount(0);
+        setColorCount(0);
+        setSpecifications("");
+      })
+      .catch(error => {
+        console.error("Error sending order:", error);
+        toast.error("Failed to send order. Please try again.");
+      })
+      .finally(() => {
+        setIsProcessing(false);
+      });
+    } catch (err) {
+      console.error("Error preparing order:", err);
+      toast.error("Failed to prepare order. Please try again.");
+      setIsProcessing(false);
+    }
   };
 
   // Check if binding type is a hard binding option
@@ -646,6 +732,20 @@ const BindingOrderForm = () => {
               <CardContent className="p-6">
                 <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Order Summary</h3>
                 
+                {/* QR Code Section - Always visible */}
+                <div className="bg-white p-3 border border-primary/30 rounded-md mb-4">
+                  <p className="text-sm mb-2 text-center font-medium">Scan to pay</p>
+                  <div className="flex justify-center">
+                    <img 
+                      src="/images/payment-qr.jpg" 
+                      alt="PhonePe Payment QR" 
+                      className="w-full max-w-[200px] mx-auto border border-gray-200 p-1 rounded"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-primary font-medium mt-2">Pay using any UPI app</p>
+                </div>
+                
                 {!pricingInfo ? (
                   <div className="text-center py-8">
                     <div className="binding-animation-container mx-auto mb-4 relative w-32 h-32">
@@ -795,16 +895,6 @@ const BindingOrderForm = () => {
                     
                     <div className="border-t pt-4">
                       <h4 className="font-medium mb-2">Payment Instructions</h4>
-                      <div className="bg-white p-3 border rounded-md mb-3">
-                        <p className="text-sm mb-2 text-center font-medium">Scan to pay ₹{pricingInfo.totalPrice}</p>
-                        <div className="flex justify-center">
-                          <img 
-                            src="/images/payment-qr.jpg" 
-                            alt="PhonePe Payment QR" 
-                            className="w-full max-w-[300px] mx-auto"
-                          />
-                        </div>
-                      </div>
                       <div className="text-xs space-y-1 text-gray-500 mb-4">
                         <p>1. After payment, please take a screenshot of the payment confirmation.</p>
                         <p>2. Include your name and contact number with your order.</p>

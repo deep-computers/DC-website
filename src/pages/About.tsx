@@ -2,10 +2,103 @@ import { motion } from "framer-motion";
 import { BookOpen, Users, Target, Heart, Trophy, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { useInView } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
+
+// Number animation component
+const AnimatedCounter = ({ value, suffix = "", prefix = "", duration = 2000 }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref);
+  
+  useEffect(() => {
+    if (isInView) {
+      let startTimestamp = null;
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        setCount(Math.floor(progress * value));
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      };
+      window.requestAnimationFrame(step);
+    }
+  }, [isInView, value, duration]);
+
+  return (
+    <span ref={ref}>
+      {prefix}{count}{suffix}
+    </span>
+  );
+};
+
+// Star Rating Component
+const StarRating = ({ rating }) => {
+  const fullStars = Math.floor(rating);
+  const partialStar = rating % 1;
+  const stars = [];
+
+  const ref = useRef(null);
+  const isInView = useInView(ref);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    if (isInView) {
+      const timer = setTimeout(() => {
+        setAnimate(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isInView]);
+
+  // Create full stars
+  for (let i = 0; i < fullStars; i++) {
+    stars.push(
+      <Star 
+        key={`star-${i}`} 
+        className={`h-5 w-5 text-[#D4AF37] fill-[#D4AF37] transition-opacity duration-500 ${animate ? 'opacity-100' : 'opacity-0'}`} 
+        style={{ transitionDelay: `${i * 150}ms` }}
+      />
+    );
+  }
+
+  // Add partial star if needed
+  if (partialStar > 0) {
+    stars.push(
+      <div key="partial-star" className="relative inline-block h-5 w-5">
+        {/* Empty star background */}
+        <Star className={`absolute h-5 w-5 text-[#D4AF37] transition-opacity duration-500 ${animate ? 'opacity-100' : 'opacity-0'}`} 
+              style={{ transitionDelay: `${fullStars * 150}ms` }} />
+        {/* Filled portion of star */}
+        <div className="absolute overflow-hidden h-full" style={{ width: `${partialStar * 100}%` }}>
+          <Star className={`h-5 w-5 text-[#D4AF37] fill-[#D4AF37] transition-opacity duration-500 ${animate ? 'opacity-100' : 'opacity-0'}`} 
+                style={{ transitionDelay: `${fullStars * 150 + 150}ms` }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Add empty stars to reach 5 total
+  for (let i = Math.ceil(rating); i < 5; i++) {
+    stars.push(
+      <Star 
+        key={`empty-star-${i}`} 
+        className={`h-5 w-5 text-[#D4AF37] transition-opacity duration-500 ${animate ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transitionDelay: `${i * 150}ms` }}
+      />
+    );
+  }
+
+  return <div ref={ref} className="flex items-center gap-1">{stars}</div>;
+};
 
 const About = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-[#D4AF37]/5">
+      <Header />
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden">
         <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-5"></div>
@@ -40,7 +133,7 @@ const About = () => {
             >
               <h2 className="text-3xl font-serif font-bold mb-6">Our Journey</h2>
               <p className="text-gray-600 mb-4">
-                In 2010, Deep Computers began as a small printing shop in Greater Noida, founded by Deepak Nagar with a simple mission: to help students with their academic needs. What started as a modest operation quickly grew into something extraordinary.
+                In 2010, Deep Computers began as a small printing shop in Greater Noida, founded by Deep Nagar with a simple mission: to help students with their academic needs. What started as a modest operation quickly grew into something extraordinary.
               </p>
               <p className="text-gray-600 mb-4">
                 The turning point came when a group of MBA students approached us with their thesis work. They were struggling to find a service that could handle both printing and academic assistance with the quality they needed. We stepped up, not just providing printing services but also offering guidance and support throughout their academic journey.
@@ -60,22 +153,31 @@ const About = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="bg-[#D4AF37]/5 p-6 rounded-xl">
                     <Trophy className="h-8 w-8 text-[#D4AF37] mb-4" />
-                    <h3 className="font-serif font-bold text-xl mb-2">10+ Years</h3>
+                    <h3 className="font-serif font-bold text-xl mb-2">
+                      <AnimatedCounter value={15} suffix="+ Years" />
+                    </h3>
                     <p className="text-gray-600">Of Excellence</p>
                   </div>
                   <div className="bg-[#D4AF37]/5 p-6 rounded-xl">
                     <Users className="h-8 w-8 text-[#D4AF37] mb-4" />
-                    <h3 className="font-serif font-bold text-xl mb-2">2 Lakhs+</h3>
+                    <h3 className="font-serif font-bold text-xl mb-2">
+                      <AnimatedCounter value={2000000} suffix="+" prefix="" />
+                    </h3>
                     <p className="text-gray-600">Students Served</p>
                   </div>
                   <div className="bg-[#D4AF37]/5 p-6 rounded-xl">
                     <BookOpen className="h-8 w-8 text-[#D4AF37] mb-4" />
-                    <h3 className="font-serif font-bold text-xl mb-2">50+</h3>
+                    <h3 className="font-serif font-bold text-xl mb-2">
+                      <AnimatedCounter value={50} suffix="+" />
+                    </h3>
                     <p className="text-gray-600">Colleges</p>
                   </div>
                   <div className="bg-[#D4AF37]/5 p-6 rounded-xl">
                     <Star className="h-8 w-8 text-[#D4AF37] mb-4" />
-                    <h3 className="font-serif font-bold text-xl mb-2">4.9/5</h3>
+                    <h3 className="font-serif font-bold text-xl mb-2 flex flex-col items-center">
+                      <StarRating rating={4.8} />
+                      <span className="mt-1 text-sm text-gray-500">4.8/5</span>
+                    </h3>
                     <p className="text-gray-600">Customer Rating</p>
                   </div>
                 </div>
@@ -137,9 +239,9 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                name: "Deepak Nagar",
+                name: "Deep Nagar",
                 role: "Founder & Owner",
-                description: "With over a decade of experience in academic services, Deepak leads the team with his vision and dedication to student success."
+                description: "With over a decade of experience in academic services, Deep leads the team with his vision and dedication to student success."
               },
               {
                 name: "Rahul Nagar",
@@ -180,11 +282,11 @@ const About = () => {
                 viewport={{ once: true }}
                 className="bg-white p-6 rounded-xl shadow-lg"
               >
-                {member.name === "Deepak Nagar" ? (
+                {member.name === "Deep Nagar" ? (
                   <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                     <img 
                       src="/images/team/Deepak.png" 
-                      alt="Deepak Nagar" 
+                      alt="Deep Nagar" 
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -220,10 +322,10 @@ const About = () => {
                 <h3 className="text-xl font-serif font-bold text-center mb-2">{member.name}</h3>
                 <p className="text-[#D4AF37] text-center mb-4">{member.role}</p>
                 <p className="text-gray-600 text-center mb-4">{member.description}</p>
-                {member.name === "Deepak Nagar" && (
+                {member.name === "Deep Nagar" && (
                   <a href="https://wa.me/919999629200" target="_blank" rel="noreferrer" className="block w-full">
                     <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
-                      WhatsApp Deepak
+                      WhatsApp Deep
                     </Button>
                   </a>
                 )}
@@ -326,6 +428,7 @@ const About = () => {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

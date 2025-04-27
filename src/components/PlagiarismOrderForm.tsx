@@ -372,69 +372,79 @@ const PlagiarismOrderForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Upload documents
-      const documentUploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('contactEmail', contactInfo.email);
-        formData.append('contactPhone', contactInfo.phone);
-        formData.append('orderType', 'plagiarism-doc');
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to upload document');
-        }
-        
-        return response.json();
-      });
-
-      // Upload payment proof
-      const paymentFormData = new FormData();
-      paymentFormData.append('file', paymentProof);
-      paymentFormData.append('contactEmail', contactInfo.email);
-      paymentFormData.append('contactPhone', contactInfo.phone);
-      paymentFormData.append('orderType', 'plagiarism-payment');
+      // Generate a unique order ID with timestamp
+      const orderId = `DC-PL-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
-      const paymentResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: paymentFormData,
+      // Get current date and time
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+      const timeStr = now.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true 
       });
       
-      if (!paymentResponse.ok) {
-        throw new Error('Failed to upload payment proof');
-      }
+      // Create FormData for the API request
+      const formData = new FormData();
       
-      const paymentUploadResult = await paymentResponse.json();
-
-      // Wait for all document uploads to complete
-      const documentUploadResults = await Promise.all(documentUploadPromises);
-
-      // Create order in database
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Add order type and ID
+      formData.append('orderType', 'plagiarism');
+      formData.append('orderId', orderId);
+      
+      // Add contact information
+      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
+      formData.append('contactEmail', contactInfo.email);
+      formData.append('contactPhone', contactInfo.phone);
+      
+      // Add specifications as stringified JSON
+      const orderSpecifications = {
+        orderType: 'plagiarism',
+        services: {
+          plagiarismCheck: selectedServices.plagiarismCheck,
+          plagiarismRemoval: selectedServices.plagiarismRemoval,
+          aiCheck: selectedServices.aiCheck,
+          aiRemoval: selectedServices.aiRemoval
         },
-        body: JSON.stringify({
-          documents: documentUploadResults,
-          paymentProof: paymentUploadResult,
-          contactInfo,
-          services: selectedServices,
-          totalPages: pricingInfo?.pageDetails.totalPages,
-          totalPrice: pricingInfo?.totalPrice,
-          specifications
-        }),
+        totalPages: pricingInfo?.pageDetails.totalPages || 0,
+        pageDetails: pricingInfo?.pageDetails || { totalPages: 0 },
+        specialInstructions: specifications,
+        totalPrice: pricingInfo?.totalPrice || 0
+      };
+      
+      formData.append('specifications', JSON.stringify(orderSpecifications));
+      
+      // Add timestamp
+      formData.append('timestamp', now.toISOString());
+      
+      // Add each file
+      files.forEach((file, index) => {
+        formData.append(`file-${index}`, file);
       });
-
-      if (!orderResponse.ok) {
-        throw new Error('Failed to create order');
+      
+      // Add payment proof if provided
+      if (paymentProof) {
+        formData.append('paymentProof', paymentProof);
       }
-
-      toast.success("Your plagiarism check order has been submitted! We'll contact you shortly with the results.");
+      
+      // Send to the API
+      const response = await fetch('/api/orders/email', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send order details');
+      }
+      
+      const data = await response.json();
+      
+      toast.success(`Your plagiarism check order #${orderId} has been submitted! We'll contact you shortly with the results.`);
       
       // Reset form
       setFiles([]);
@@ -666,6 +676,20 @@ const PlagiarismOrderForm = () => {
               <CardContent className="p-6">
                 <h3 className="font-serif text-xl font-semibold mb-6 text-primary">Order Summary</h3>
                 
+                {/* QR Code Section - Always visible */}
+                <div className="bg-white p-3 border border-primary/30 rounded-md mb-4">
+                  <p className="text-sm mb-2 text-center font-medium">Scan to pay</p>
+                  <div className="flex justify-center">
+                    <img 
+                      src="/images/payment-qr.jpg" 
+                      alt="PhonePe Payment QR" 
+                      className="w-full max-w-[200px] mx-auto border border-gray-200 p-1 rounded"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-primary font-medium mt-2">Pay using any UPI app</p>
+                </div>
+                
                 {!pricingInfo ? (
                   <div className="text-center py-8">
                     <div className="plagiarism-animation-container mx-auto mb-4 relative w-32 h-32">
@@ -846,21 +870,11 @@ const PlagiarismOrderForm = () => {
                     
                     <div className="border-t pt-4">
                       <h4 className="font-medium mb-2">Payment Instructions</h4>
-                      <div className="bg-white p-3 border rounded-md mb-3">
-                        <p className="text-sm mb-2 text-center font-medium">Scan to pay ₹{pricingInfo.totalPrice}</p>
-                        <div className="flex justify-center">
-                          <img 
-                            src="/images/payment-qr.jpg" 
-                            alt="PhonePe Payment QR" 
-                            className="w-full max-w-[300px] mx-auto"
-                          />
-                        </div>
-                      </div>
                       <div className="text-xs space-y-1 text-gray-500 mb-4">
                         <p>1. After payment, please take a screenshot of the payment confirmation.</p>
                         <p>2. Include your name and contact number with your order.</p>
-                        <p>3. Once payment is verified, we'll begin the plagiarism check/removal process.</p>
-                        <p>4. We'll contact you with the results within 24-48 hours.</p>
+                        <p>3. Once verified, your plagiarism report will be delivered within 24-48 hours.</p>
+                        <p>4. We'll notify you when your results are ready.</p>
                       </div>
                       
                       {/* Payment Proof Upload Section */}

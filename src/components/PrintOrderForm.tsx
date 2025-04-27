@@ -292,7 +292,7 @@ const PrintOrderForm = () => {
     
     try {
       // Generate a unique order ID with timestamp
-      const orderId = `PO-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
       // Get current date and time
       const now = new Date();
@@ -308,59 +308,82 @@ const PrintOrderForm = () => {
         hour12: true 
       });
       
-      // Prepare order data
-      const orderData: OrderData = {
-        orderId,
-        files: files.map(file => ({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          id: file.id
-        })),
-        specifications,
-        bwCount,
-        colorCount,
-        copies,
-        gsm,
-        colorOption,
-        pricingInfo,
-        paymentProof: paymentProof ? {
-          name: paymentProof.name,
-          size: paymentProof.size,
-          type: paymentProof.type,
-          id: paymentProof.id
-        } : null,
-        contactInfo,
-        timestamp: {
-          date: dateStr,
-          time: timeStr,
-          iso: now.toISOString()
-        }
+      // Create FormData for the API request
+      const formData = new FormData();
+      
+      // Add order type and ID
+      formData.append('orderType', 'print');
+      formData.append('orderId', orderId);
+      
+      // Add contact information
+      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
+      formData.append('contactEmail', contactInfo.email);
+      formData.append('contactPhone', contactInfo.phone);
+      
+      // Add specifications as stringified JSON
+      const orderSpecifications = {
+        orderType: 'print',
+        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
+        bwPageCount: bwCount,
+        colorPageCount: colorCount,
+        copies: copies,
+        colorOption: colorOption,
+        specialInstructions: specifications,
+        totalPrice: pricingInfo?.totalPrice || 0
       };
       
-      // Store the order data in localStorage for persistence
-      // In a real application, you would send this to a server
-      const existingOrders = JSON.parse(localStorage.getItem('printOrders') || '[]');
-      localStorage.setItem('printOrders', JSON.stringify([...existingOrders, orderData]));
+      formData.append('specifications', JSON.stringify(orderSpecifications));
       
-      // Set the submitted order ID
-      setSubmittedOrderId(orderId);
-      setOrderSubmitted(true);
+      // Add timestamp
+      formData.append('timestamp', now.toISOString());
       
-      toast.success(`Your print order #${orderId} has been submitted! We'll contact you shortly.`);
+      // Add each file
+      files.forEach((file, index) => {
+        formData.append(`file-${index}`, file);
+      });
       
-      // Reset the form
-      setFiles([]);
-      setPricingInfo(null);
-      setPaymentProof(null);
-      setContactInfo({ email: "", phone: "" });
-      setBwCount(0);
-      setColorCount(0);
-      setSpecifications("");
+      // Add payment proof if provided
+      if (paymentProof) {
+        formData.append('paymentProof', paymentProof);
+      }
+      
+      // Send to the API
+      fetch('/api/orders/email', {
+        method: 'POST',
+        body: formData,
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to send order details');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Set the submitted order ID
+        setSubmittedOrderId(orderId);
+        setOrderSubmitted(true);
+        
+        toast.success(`Your print order #${orderId} has been submitted! We'll contact you shortly.`);
+        
+        // Reset the form
+        setFiles([]);
+        setPricingInfo(null);
+        setPaymentProof(null);
+        setContactInfo({ email: "", phone: "" });
+        setBwCount(0);
+        setColorCount(0);
+        setSpecifications("");
+      })
+      .catch(error => {
+        console.error("Error sending order:", error);
+        toast.error("Failed to send order. Please try again.");
+      })
+      .finally(() => {
+        setIsProcessing(false);
+      });
     } catch (err) {
-      console.error("Error submitting order:", err);
-      toast.error("Failed to submit order. Please try again.");
-    } finally {
+      console.error("Error preparing order:", err);
+      toast.error("Failed to prepare order. Please try again.");
       setIsProcessing(false);
     }
   };
@@ -589,6 +612,20 @@ const PrintOrderForm = () => {
                 <CardContent className="p-6">
                   <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Order Summary</h3>
                   
+                  {/* QR Code Section - Always visible */}
+                  <div className="bg-white p-3 border border-primary/30 rounded-md mb-4">
+                    <p className="text-sm mb-2 text-center font-medium">Scan to pay</p>
+                    <div className="flex justify-center">
+                      <img 
+                        src="/images/payment-qr.jpg" 
+                        alt="PhonePe Payment QR" 
+                        className="w-full max-w-[200px] mx-auto border border-gray-200 p-1 rounded"
+                        style={{ display: 'block' }}
+                      />
+                    </div>
+                    <p className="text-xs text-center text-primary font-medium mt-2">Pay using any UPI app</p>
+                  </div>
+                  
                   {!pricingInfo ? (
                     <div className="text-center py-8">
                       <div className="print-animation-container mx-auto mb-4 relative w-32 h-32">
@@ -606,7 +643,7 @@ const PrintOrderForm = () => {
                           <div className="person-body w-8 h-8 bg-[#3F88C5] mt-1 mx-auto rounded-t-md person-move-animation" />
                         </div>
                       </div>
-                      <style jsx>{`
+                      <style dangerouslySetInnerHTML={{__html: `
                         @keyframes printPaper {
                           0% { transform: translateY(-100%); opacity: 0; }
                           20% { transform: translateY(0%); opacity: 1; }
@@ -625,7 +662,7 @@ const PrintOrderForm = () => {
                         .person-move-animation {
                           animation: personMove 2s infinite;
                         }
-                      `}</style>
+                      `}} />
                       <p className="text-gray-500">Upload files and enter page counts to see pricing</p>
                     </div>
                   ) : (
@@ -691,16 +728,6 @@ const PrintOrderForm = () => {
                       
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-2">Payment Instructions</h4>
-                        <div className="bg-white p-3 border rounded-md mb-3">
-                          <p className="text-sm mb-2 text-center font-medium">Scan to pay ₹{pricingInfo.totalPrice}</p>
-                          <div className="flex justify-center">
-                            <img 
-                              src="/images/payment-qr.jpg" 
-                              alt="PhonePe Payment QR" 
-                              className="w-full max-w-[300px] mx-auto"
-                            />
-                          </div>
-                        </div>
                         <div className="text-xs space-y-1 text-gray-500 mb-4">
                           <p>1. After payment, please take a screenshot of the payment confirmation.</p>
                           <p>2. Include your name and contact number with your order.</p>
@@ -813,23 +840,6 @@ const PrintOrderForm = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        )}
-        
-        {/* Admin Access Info - Only visible in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-12 p-4 border border-gray-200 rounded-md bg-gray-50">
-            <h3 className="text-md font-medium mb-2">Order Data Storage Information (Development Only)</h3>
-            <p className="text-sm text-gray-600 mb-2">
-              All order data is currently stored in the browser's localStorage under the key 'printOrders'.
-              In production, this would be sent to a backend server and stored in a database.
-            </p>
-            <div className="text-xs text-gray-500">
-              <p>To access stored orders:</p>
-              <pre className="bg-gray-100 p-2 rounded mt-1 overflow-x-auto">
-                const orders = JSON.parse(localStorage.getItem('printOrders') || '[]')
-              </pre>
             </div>
           </div>
         )}
