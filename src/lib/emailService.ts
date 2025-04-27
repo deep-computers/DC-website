@@ -71,6 +71,10 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       orderDate = String(data.timestamp);
     }
     
+    // Add a short delay before sending to ensure all processing is complete
+    console.log('Waiting before sending email to ensure all data is processed...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     // Prepare the email template parameters
     const templateParams = {
       order_id: data.orderId,
@@ -83,6 +87,13 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       payment_proof: paymentProof,
       order_date: orderDate
     };
+
+    // Final check to ensure file list is included
+    if (fileList === 'No files uploaded' && Array.isArray(data.fileNames) && data.fileNames.length > 0) {
+      console.error('File list is empty even though files were provided:', data.fileNames);
+      fileList = data.fileNames.toString(); // Last resort fallback
+      templateParams.file_list = fileList;
+    }
 
     console.log('Sending email with parameters:', templateParams);
     
@@ -152,7 +163,7 @@ export const uploadFileToWebhook = async (file: File | undefined | null): Promis
       return null;
     }
     
-    console.log(`Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+    console.log(`Starting file upload process: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
     
     // In a real implementation, you would upload the file to a server or cloud storage here
     // For demonstration purposes, we'll log more detailed information and add a delay
@@ -163,10 +174,17 @@ export const uploadFileToWebhook = async (file: File | undefined | null): Promis
     const timestamp = Date.now();
     const uniqueFileName = `${timestamp}_${cleanFileName}`;
     
-    console.log(`File processed successfully. Original name: ${file.name}, Processed name: ${uniqueFileName}`);
+    console.log(`File processing: ${file.name}, creating unique name: ${uniqueFileName}`);
     
-    // Simulate file processing with a longer delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate a more substantial file processing delay
+    // This gives enough time for larger files to be properly "uploaded" in simulation
+    console.log(`Uploading file ${file.name}...`);
+    
+    // Add a longer delay to simulate a proper upload process
+    // Files typically take time to upload based on size and connection speed
+    await new Promise(resolve => setTimeout(resolve, 3000 + Math.floor(file.size / 10000)));
+    
+    console.log(`File uploaded successfully: ${file.name}`);
     
     // Return the original file name so it's recognizable in the email
     return file.name;

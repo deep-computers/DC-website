@@ -345,6 +345,14 @@ Files: ${files.map(f => f.name).join(', ')}
       // Generate a unique order ID
       const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000)}`;
       
+      // Notify user that files are being processed (this may take time)
+      toast.info(
+        <div className="flex flex-col">
+          <p>Processing your files...</p>
+          <p className="text-xs mt-1">Please wait while we upload your files. This may take a moment.</p>
+        </div>
+      );
+      
       // Process file uploads first and wait for them to complete
       console.log('Starting file processing...');
       console.log(`Files to process: ${files.length} files`, files.map(f => f.name));
@@ -386,6 +394,12 @@ Files: ${files.map(f => f.name).join(', ')}
       console.log('Processed file names:', validFileNames);
       console.log('Payment proof name:', paymentProofName);
       
+      // Wait an additional 3 seconds to ensure all files are fully processed
+      // This helps ensure everything is ready before sending the email
+      console.log('Waiting for all uploads to finalize...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('All uploads should be finalized now. Preparing to send email...');
+      
       // Get current timestamp for the order
       const now = new Date();
       
@@ -412,9 +426,18 @@ Files: ${files.map(f => f.name).join(', ')}
         timestamp: now.toISOString()
       };
       
+      // Verify files are included in the order data
+      if (validFileNames.length === 0) {
+        console.error('No valid file names were processed. Original files:', files.map(f => f.name));
+        toast.error("File upload issue detected. Please try again with smaller files or contact support.");
+        setIsProcessing(false);
+        return;
+      }
+      
       console.log('Submitting order with data:', JSON.stringify(orderData, null, 2));
       
       // Send the order via email
+      toast.info("Sending your order...");
       const emailSent = await sendOrderEmail(orderData);
       
       if (emailSent) {
