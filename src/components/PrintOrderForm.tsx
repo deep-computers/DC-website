@@ -358,21 +358,30 @@ Files: ${files.map(f => f.name).join(', ')}
         totalPrice: pricingInfo?.totalPrice || 0
       };
       
-      // Get file names for the email
-      const fileNames = files.map(file => file.name);
+      // First ensure we have actual file names
+      const validFiles = files.filter(file => file && file.name);
+      
+      // Get proper file names for the email
+      const fileNames = validFiles.map(file => file.name);
       const paymentProofName = paymentProof?.name || '';
+      
+      console.log('Files being processed:', validFiles.map(f => f.name));
+      console.log('Payment proof being processed:', paymentProofName);
       
       // Try to upload files to a temporary file storage service
       let fileLinks: string[] = [];
       try {
         // Only upload the first few files if there are many (to avoid timeout)
-        const filesToUpload = files.slice(0, 3); // Limit to 3 files max
-        const uploadPromises = filesToUpload.map(file => uploadFileToWebhook(file));
-        fileLinks = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+        const filesToUpload = validFiles.slice(0, 3); // Limit to 3 files max
         
-        // Add file links to order details if any were successfully uploaded
-        if (fileLinks.length > 0) {
-          orderDetails.fileLinks = fileLinks;
+        if (filesToUpload.length > 0) {
+          const uploadPromises = filesToUpload.map(file => uploadFileToWebhook(file));
+          fileLinks = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+          
+          // Add file links to order details if any were successfully uploaded
+          if (fileLinks.length > 0) {
+            orderDetails.fileLinks = fileLinks;
+          }
         }
       } catch (err) {
         console.error("Error uploading files:", err);
@@ -384,14 +393,15 @@ Files: ${files.map(f => f.name).join(', ')}
         orderId,
         orderType: 'print',
         contactInfo: {
-          name: contactInfo.email.split('@')[0],
+          name: contactInfo.email ? contactInfo.email.split('@')[0] : 'Customer',
           email: contactInfo.email,
           phone: contactInfo.phone
         },
         orderDetails,
-        fileNames,
+        // Only pass non-empty arrays of filenames
+        fileNames: fileNames.length > 0 ? fileNames : [],
         timestamp: now.toISOString(),
-        paymentProofName
+        paymentProofName: paymentProofName || ''
       });
       
       if (emailSuccess) {
