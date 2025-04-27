@@ -1,4 +1,5 @@
-import emailjs from '@emailjs/browser';
+// Direct REST API implementation for EmailJS
+// This bypasses any SDK-related issues
 
 // EmailJS configuration
 // You'll need to create an account at https://www.emailjs.com/ (they have a free tier)
@@ -7,6 +8,9 @@ const SERVICE_ID = 'service_dtsv62p';
 const ORDER_TEMPLATE_ID = 'template_zihqclr'; // Change to the actual template ID
 const CONFIRMATION_TEMPLATE_ID = 'template_bjsjyck'; // Change to the actual template ID
 const PUBLIC_KEY = 'L4CbIgz6e-N-NnwFl';
+
+// The latest EmailJS API endpoint
+const EMAILJS_API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 
 interface OrderData {
   orderId: string;
@@ -23,11 +27,11 @@ interface OrderData {
 }
 
 /**
- * Send order notification email
+ * Send order notification email using direct REST API call
  */
 export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
   try {
-    console.log('Sending email for order:', data.orderId);
+    console.log('Preparing to send email for order:', data.orderId);
     
     // Format the order type nicely for the email
     const orderTypeLabels = {
@@ -53,20 +57,39 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       order_summary: JSON.stringify(data.orderDetails, null, 2)
     };
 
-    console.log('Email template params:', templateParams);
+    console.log('Email template params prepared:', templateParams);
 
-    // Send the order notification to the business using the latest pattern
-    console.log('Sending business notification email...');
+    // Send the order notification to the business using direct REST API
+    console.log('Sending business notification email via REST API...');
     try {
-      const response = await emailjs.send(
-        SERVICE_ID,
-        ORDER_TEMPLATE_ID,
-        templateParams,
-        {
-          publicKey: PUBLIC_KEY,
-        }
-      );
-      console.log('Business notification email sent successfully:', response);
+      // Prepare request payload for business notification
+      const payload = {
+        service_id: SERVICE_ID,
+        template_id: ORDER_TEMPLATE_ID,
+        user_id: PUBLIC_KEY,
+        template_params: templateParams
+      };
+      
+      console.log('REST API payload:', payload);
+      
+      // Make the REST API call
+      const response = await fetch(EMAILJS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': window.location.origin
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      // Check response
+      if (response.ok) {
+        console.log('Business notification email sent successfully:', await response.text());
+      } else {
+        const errorText = await response.text();
+        console.error(`Failed to send business email. Status: ${response.status}`, errorText);
+        throw new Error(`Email sending failed with status ${response.status}: ${errorText}`);
+      }
     } catch (err) {
       console.error('Failed to send business notification email:', err);
       throw err;
@@ -86,16 +109,34 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
         contact_phone: '+91-9311244099'
       };
       
-      console.log('Sending customer confirmation email...');
-      const confirmResponse = await emailjs.send(
-        SERVICE_ID,
-        CONFIRMATION_TEMPLATE_ID,
-        confirmationParams,
-        {
-          publicKey: PUBLIC_KEY,
-        }
-      );
-      console.log('Customer confirmation email sent successfully:', confirmResponse);
+      console.log('Sending customer confirmation email via REST API...');
+      
+      // Prepare request payload for customer confirmation
+      const confirmPayload = {
+        service_id: SERVICE_ID,
+        template_id: CONFIRMATION_TEMPLATE_ID,
+        user_id: PUBLIC_KEY,
+        template_params: confirmationParams
+      };
+      
+      // Make the REST API call
+      const confirmResponse = await fetch(EMAILJS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': window.location.origin
+        },
+        body: JSON.stringify(confirmPayload)
+      });
+      
+      // Check response
+      if (confirmResponse.ok) {
+        console.log('Customer confirmation email sent successfully:', await confirmResponse.text());
+      } else {
+        const errorText = await confirmResponse.text();
+        console.warn(`Failed to send confirmation email. Status: ${confirmResponse.status}`, errorText);
+      }
+      
       return true;
     } catch (err) {
       // If confirmation email fails, just log it - the main notification is what matters
@@ -103,7 +144,7 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       return true; // Still return true if only the confirmation fails
     }
   } catch (error) {
-    console.error('Error sending email via EmailJS:', error);
+    console.error('Error in email sending process:', error);
     return false;
   }
 };
