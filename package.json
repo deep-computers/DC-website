@@ -6,9 +6,9 @@
   "homepage": "https://dcprintingpress.com",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run copy-404",
     "build:dev": "vite build --mode development",
-    "postbuild": "npx cpy-cli dist/index.html dist/404.html",
+    "copy-404": "npx cpy dist/index.html dist --rename=404.html",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
