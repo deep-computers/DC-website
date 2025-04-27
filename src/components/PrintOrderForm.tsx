@@ -27,34 +27,16 @@ interface PricingInfo {
 
 interface OrderData {
   orderId: string;
-  files: {
-    name: string;
-    size: number;
-    type: string;
-    id: string;
-  }[];
-  specifications: string;
-  bwCount: number;
-  colorCount: number;
-  copies: number;
-  gsm: string;
-  colorOption: string;
-  pricingInfo: PricingInfo | null;
-  paymentProof: {
-    name: string;
-    size: number;
-    type: string;
-    id: string;
-  } | null;
+  orderType: string;
   contactInfo: {
+    name?: string;
     email: string;
     phone: string;
   };
-  timestamp: {
-    date: string;
-    time: string;
-    iso: string;
-  };
+  orderDetails: any;
+  fileNames: string[];
+  timestamp: string;
+  paymentProofName?: string;
 }
 
 // Define OrderDetails interface with optional fileLinks property
@@ -68,6 +50,8 @@ interface OrderDetails {
   specialInstructions: string;
   totalPrice: number;
   fileLinks?: string[];
+  fileList?: string;
+  paymentProof?: string;
 }
 
 const PrintOrderForm = () => {
@@ -268,25 +252,29 @@ const PrintOrderForm = () => {
   const validateForm = useCallback(() => {
     const errors: string[] = [];
     
-    if (files.length === 0) {
+    if (!files.length) {
       errors.push("Please upload at least one file");
+      console.warn("Form validation: No files uploaded");
     }
     
     if (bwCount === 0 && colorCount === 0) {
       errors.push("Please specify at least one page to print");
+      console.warn("Form validation: No pages specified");
     }
     
     if (!paymentProof) {
       errors.push("Please upload payment proof");
+      console.warn("Form validation: No payment proof");
     }
     
     if (!contactInfo.phone && !contactInfo.email) {
       errors.push("Please provide either email or phone number for contact");
+      console.warn("Form validation: No contact info");
     }
     
     setFormErrors(errors);
     return errors.length === 0;
-  }, [files.length, bwCount, colorCount, paymentProof, contactInfo.phone, contactInfo.email]);
+  }, [files, bwCount, colorCount, paymentProof, contactInfo.phone, contactInfo.email]);
   
   // Update form errors when key inputs change
   useEffect(() => {
@@ -329,67 +317,80 @@ Files: ${files.map(f => f.name).join(', ')}
   };
   
   const handleSubmitOrder = async () => {
-    if (!validateForm()) {
-      // Show toast for each error
-      formErrors.forEach(error => {
-        toast.error(error);
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    // Generate a unique order ID with timestamp
-    const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-    
     try {
-      // Get current date and time
-      const now = new Date();
+      setIsProcessing(true);
+      setFormErrors([]);
       
-      // Prepare order details
-      const orderDetails: OrderDetails = {
-        orderType: 'print',
-        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
-        bwPageCount: bwCount,
-        colorPageCount: colorCount,
-        copies: copies,
-        colorOption: colorOption,
-        specialInstructions: specifications,
-        totalPrice: pricingInfo?.totalPrice || 0
-      };
-      
-      // First ensure we have actual file names
-      const validFiles = files.filter(file => file && file.name);
-      
-      // Get proper file names for the email
-      const fileNames = validFiles.map(file => file.name);
-      const paymentProofName = paymentProof?.name || '';
-      
-      console.log('Files being processed:', validFiles.map(f => f.name));
-      console.log('Payment proof being processed:', paymentProofName);
-      
-      // Try to upload files to a temporary file storage service
-      let fileLinks: string[] = [];
-      try {
-        // Only upload the first few files if there are many (to avoid timeout)
-        const filesToUpload = validFiles.slice(0, 3); // Limit to 3 files max
-        
-        if (filesToUpload.length > 0) {
-          const uploadPromises = filesToUpload.map(file => uploadFileToWebhook(file));
-          fileLinks = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
-          
-          // Add file links to order details if any were successfully uploaded
-          if (fileLinks.length > 0) {
-            orderDetails.fileLinks = fileLinks;
-          }
-        }
-      } catch (err) {
-        console.error("Error uploading files:", err);
-        // Continue without file uploads
+      // Validate required fields
+      if (!contactInfo.email || !contactInfo.phone) {
+        toast.error("Please provide your contact information");
+        setIsProcessing(false);
+        return;
       }
       
-      // Send email using EmailJS
-      const emailSuccess = await sendOrderEmail({
+      // Validate at least one file is uploaded
+      if (files.length === 0) {
+        toast.error("Please upload at least one file");
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Validate payment proof
+      if (!paymentProof) {
+        toast.error("Please upload payment proof");
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Generate a unique order ID
+      const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000)}`;
+      
+      // Process file uploads first and wait for them to complete
+      console.log('Starting file processing...');
+      console.log(`Files to process: ${files.length} files`, files.map(f => f.name));
+      
+      // Process all uploaded files, handling them sequentially to avoid race conditions
+      const processedFileNames: (string | null)[] = [];
+      for (const fileWithPreview of files) {
+        console.log(`Processing uploaded file: ${fileWithPreview.name}`, fileWithPreview);
+        try {
+          // Pass the FileWithPreview object directly - it extends File so it should work
+          const fileName = await uploadFileToWebhook(fileWithPreview);
+          console.log(`File processed successfully: ${fileWithPreview.name} -> ${fileName}`);
+          processedFileNames.push(fileName);
+        } catch (error) {
+          console.error(`Error processing file ${fileWithPreview.name}:`, error);
+          processedFileNames.push(null);
+        }
+      }
+      
+      // Process payment proof if provided
+      let paymentProofName: string | null = null;
+      if (paymentProof) {
+        console.log(`Processing payment proof: ${paymentProof.name}`, paymentProof);
+        try {
+          paymentProofName = await uploadFileToWebhook(paymentProof);
+          console.log(`Payment proof processed: ${paymentProof.name} -> ${paymentProofName}`);
+        } catch (error) {
+          console.error('Error processing payment proof:', error);
+        }
+      } else {
+        console.log('No payment proof provided');
+      }
+      
+      // Filter out null values from file names
+      const validFileNames = processedFileNames.filter((name): name is string => 
+        name !== null && typeof name === 'string' && name.trim().length > 0
+      );
+      
+      console.log('Processed file names:', validFileNames);
+      console.log('Payment proof name:', paymentProofName);
+      
+      // Get current timestamp for the order
+      const now = new Date();
+      
+      // Prepare the order data
+      const orderData: OrderData = {
         orderId,
         orderType: 'print',
         contactInfo: {
@@ -397,21 +398,37 @@ Files: ${files.map(f => f.name).join(', ')}
           email: contactInfo.email,
           phone: contactInfo.phone
         },
-        orderDetails,
-        // Only pass non-empty arrays of filenames
-        fileNames: fileNames.length > 0 ? fileNames : [],
-        timestamp: now.toISOString(),
-        paymentProofName: paymentProofName || ''
-      });
+        orderDetails: {
+          paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
+          bwPageCount: bwCount,
+          colorPageCount: colorCount,
+          copies: copies,
+          colorOption: colorOption,
+          specialInstructions: specifications,
+          totalPrice: pricingInfo?.totalPrice || 0
+        },
+        fileNames: validFileNames,
+        paymentProofName: paymentProofName || undefined,
+        timestamp: now.toISOString()
+      };
       
-      if (emailSuccess) {
-        // Set the submitted order ID
+      console.log('Submitting order with data:', JSON.stringify(orderData, null, 2));
+      
+      // Send the order via email
+      const emailSent = await sendOrderEmail(orderData);
+      
+      if (emailSent) {
+        // Order successful
         setSubmittedOrderId(orderId);
         setOrderSubmitted(true);
+        toast.success(
+          <div className="flex flex-col">
+            <p>Thank you for your order!</p>
+            <p className="text-xs mt-1">Order ID: {orderId}</p>
+          </div>
+        );
         
-        toast.success(`Your print order #${orderId} has been submitted! We'll contact you shortly.`);
-        
-        // Reset the form
+        // Reset form for new orders
         setFiles([]);
         setPricingInfo(null);
         setPaymentProof(null);
@@ -420,19 +437,14 @@ Files: ${files.map(f => f.name).join(', ')}
         setColorCount(0);
         setSpecifications("");
       } else {
-        // Try WhatsApp fallback
-        throw new Error("Email service failed");
+        // Email failed, offer retry
+        setFormErrors(["There was a problem submitting your order. Please try again or contact us directly."]);
+        toast.error('Order submission failed. Please try again.');
       }
-    } catch (err) {
-      console.error("Error preparing order:", err);
-      sendFallbackEmail(orderId, contactInfo, {
-        orderType: 'print',
-        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
-        bwPageCount: bwCount,
-        colorPageCount: colorCount,
-        copies: copies,
-        totalPrice: pricingInfo?.totalPrice || 0
-      });
+    } catch (error) {
+      console.error('Order submission error:', error);
+      setFormErrors(["An unexpected error occurred. Please try again later or contact us directly."]);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsProcessing(false);
     }

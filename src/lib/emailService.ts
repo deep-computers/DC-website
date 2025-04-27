@@ -46,16 +46,30 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     let fileList = 'No files uploaded';
     if (Array.isArray(data.fileNames) && data.fileNames.length > 0) {
       // Filter out any undefined or empty values
-      const validFileNames = data.fileNames.filter(name => name && name.trim().length > 0);
+      const validFileNames = data.fileNames.filter(name => name && typeof name === 'string' && name.trim().length > 0);
       if (validFileNames.length > 0) {
         fileList = validFileNames.join(', ');
+        console.log('Valid files for email:', validFileNames);
+      } else {
+        console.warn('No valid file names found in data.fileNames array');
       }
+    } else {
+      console.warn('data.fileNames is not a valid array or is empty:', data.fileNames);
     }
     
     // Prepare payment proof name - ensure it's a valid string
     const paymentProof = data.paymentProofName && typeof data.paymentProofName === 'string' && data.paymentProofName.trim().length > 0
       ? data.paymentProofName
       : 'Not provided';
+    
+    // Format the timestamp nicely for display
+    let orderDate = 'Unknown';
+    try {
+      orderDate = new Date(data.timestamp).toLocaleString();
+    } catch (e) {
+      console.error('Error formatting timestamp:', e);
+      orderDate = String(data.timestamp);
+    }
     
     // Prepare the email template parameters
     const templateParams = {
@@ -67,7 +81,7 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       order_details: JSON.stringify(data.orderDetails, null, 2),
       file_list: fileList,
       payment_proof: paymentProof,
-      order_date: new Date(data.timestamp).toLocaleString()
+      order_date: orderDate
     };
 
     console.log('Sending email with parameters:', templateParams);
@@ -125,17 +139,36 @@ export const fileToBase64 = (file: File): Promise<string> => {
  * This is a simplified version that just returns the file name
  * In a production environment, you'd upload to a server/cloud storage
  */
-export const uploadFileToWebhook = async (file: File): Promise<string | null> => {
+export const uploadFileToWebhook = async (file: File | undefined | null): Promise<string | null> => {
   try {
+    // Validate file exists and has name property
     if (!file) {
-      console.log('No file provided to upload');
+      console.error('File is undefined or null in uploadFileToWebhook');
       return null;
     }
     
-    console.log(`Processing file: ${file.name}`);
+    if (!file.name) {
+      console.error('File name is undefined or invalid in uploadFileToWebhook');
+      return null;
+    }
     
-    // Since we don't have a real file storage service,
-    // just return the filename so it can be included in the email
+    console.log(`Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+    
+    // In a real implementation, you would upload the file to a server or cloud storage here
+    // For demonstration purposes, we'll log more detailed information and add a delay
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    
+    // Add a timestamp to make filenames unique
+    const timestamp = Date.now();
+    const uniqueFileName = `${timestamp}_${cleanFileName}`;
+    
+    console.log(`File processed successfully. Original name: ${file.name}, Processed name: ${uniqueFileName}`);
+    
+    // Simulate file processing with a longer delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Return the original file name so it's recognizable in the email
     return file.name;
   } catch (error) {
     console.error('Error processing file:', error);
