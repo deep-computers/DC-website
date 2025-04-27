@@ -9,7 +9,9 @@ const EMAILJS_CONFIRMATION_TEMPLATE_ID = 'confirmation_template'; // For custome
 const EMAILJS_USER_ID = 'L4CbIgz6e-N-NnwFl'; // Replace with your user ID from EmailJS dashboard
 
 // Initialize EmailJS
-emailjs.init(EMAILJS_USER_ID);
+emailjs.init({
+  publicKey: 'L4CbIgz6e-N-NnwFl',
+});
 
 interface OrderData {
   orderId: string;
@@ -31,12 +33,6 @@ interface OrderData {
 export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
   try {
     console.log('Sending email for order:', data.orderId);
-    console.log('EmailJS config:', {
-      serviceId: EMAILJS_SERVICE_ID,
-      orderTemplateId: EMAILJS_ORDER_TEMPLATE_ID,
-      confirmationTemplateId: EMAILJS_CONFIRMATION_TEMPLATE_ID,
-      userId: EMAILJS_USER_ID,
-    });
     
     // Format the order type nicely for the email
     const orderTypeLabels = {
@@ -68,8 +64,8 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     console.log('Sending business notification email...');
     try {
       const response = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_ORDER_TEMPLATE_ID,
+        'service_dtsv62p',  // Service ID
+        'order_template',   // Template ID
         templateParams
       );
       console.log('Business notification email sent successfully:', response);
@@ -93,10 +89,9 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       
       console.log('Sending customer confirmation email...');
       const confirmResponse = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_CONFIRMATION_TEMPLATE_ID,
-        confirmationParams,
-        EMAILJS_USER_ID
+        'service_dtsv62p',  // Service ID
+        'confirmation_template',  // Template ID
+        confirmationParams
       );
       console.log('Customer confirmation email sent successfully:', confirmResponse);
       return true;
@@ -130,6 +125,11 @@ export const fileToBase64 = (file: File): Promise<string> => {
  */
 export const uploadFileToWebhook = async (file: File): Promise<string | null> => {
   try {
+    if (!file) {
+      console.log('No file provided to upload');
+      return null;
+    }
+    
     // Create form data
     const formData = new FormData();
     formData.append('file', file);
