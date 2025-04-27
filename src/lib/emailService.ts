@@ -4,10 +4,10 @@
 // EmailJS configuration
 // You'll need to create an account at https://www.emailjs.com/ (they have a free tier)
 // Then create a service (e.g. Gmail, Outlook) and an email template
-const SERVICE_ID = 'service_kyceddb';
-const ORDER_TEMPLATE_ID = 'template_2p1ejse'; // Update with actual template ID 
+const SERVICE_ID = 'service_kyceddb'; // User-provided service ID
+const ORDER_TEMPLATE_ID = 'template_2p1ejse'; // Template ID
 const CONFIRMATION_TEMPLATE_ID = 'template_2p1ejse'; // Using same template for now
-const PUBLIC_KEY = 'ZkfP2kB43l2L-wA_4'; // Updated public key
+const PUBLIC_KEY = 'ImIJIUQhlhqWByJGZ'; // User's actual public key
 
 // The latest EmailJS API endpoint
 const EMAILJS_API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
