@@ -1,0 +1,358 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+/* Custom media query for extra small screens */
+@media (min-width: 480px) {
+  .xs\:flex-row {
+    flex-direction: row;
+  }
+  .xs\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .xs\:gap-6 {
+    gap: 1.5rem;
+  }
+  .xs\:gap-4 {
+    gap: 1rem;
+  }
+  .xs\:text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  .xs\:text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+  .xs\:h-90px {
+    height: 90px;
+  }
+  .xs\:px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 45 65% 52%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Smooth transition for all elements */
+  * {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+}
+
+/* Update transition properties for specific elements */
+body, 
+.bg-pattern, 
+.bg-pattern::before,
+.hero-gradient, 
+.hero-gradient::before,
+.section-gradient,
+.card-gradient,
+header,
+footer,
+.main {
+  will-change: background-color, background-image;
+  transition-property: color, background-color, background-image, border-color;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure SVG elements transition smoothly */
+svg path, 
+svg circle, 
+svg rect,
+svg line {
+  transition-duration: 300ms;
+  transition-property: fill, stroke, opacity;
+}
+
+/* Ensure background images and gradients transition properly */
+[class*="bg-gradient"],
+[style*="background-image"] {
+  transition-property: background-image, background-color;
+  transition-duration: 400ms;
+}
+
+.font-serif {
+  font-family: 'Playfair Display', serif;
+}
+
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom background patterns and designs */
+.bg-pattern {
+  background-color: #ffffff;
+  background-image: 
+    radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(212, 175, 55, 0.03) 25%, transparent 25%),
+    linear-gradient(-135deg, rgba(212, 175, 55, 0.03) 25%, transparent 25%);
+  background-size: 60px 60px, 60px 60px, 30px 30px, 30px 30px;
+  background-position: 0 0, 0 0, 15px 15px, -15px -15px;
+  position: relative;
+}
+
+.bg-pattern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.85) 100%
+  );
+  pointer-events: none;
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.15) 0%, 
+    rgba(255, 255, 255, 0.9) 50%, 
+    rgba(212, 175, 55, 0.15) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-gradient::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.12) 0%,
+    transparent 70%
+  );
+  animation: rotate 40s linear infinite;
+}
+
+.section-gradient {
+  background: linear-gradient(180deg, 
+    #ffffff 0%, 
+    rgba(212, 175, 55, 0.08) 50%,
+    #ffffff 100%
+  );
+}
+
+.card-gradient {
+  background: linear-gradient(45deg, 
+    rgba(212, 175, 55, 0.06) 0%, 
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(212, 175, 55, 0.06) 100%
+  );
+  backdrop-filter: blur(10px);
+}
+
+.card-gradient:hover {
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.2);
+}
+
+.footer-gradient {
+  background: linear-gradient(0deg, 
+    rgba(245, 245, 245, 1) 0%, 
+    rgba(255, 255, 255, 1) 100%
+  );
+  position: relative;
+}
+
+.footer-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(212, 175, 55, 0.3), 
+    transparent
+  );
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.bg-animated::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    rgba(212, 175, 55, 0.2) 0%,
+    rgba(184, 134, 11, 0.1) 25%, 
+    rgba(255, 255, 255, 0) 50%,
+    rgba(212, 175, 55, 0.1) 75%,
+    rgba(184, 134, 11, 0.2) 100%
+  );
+  background-size: 200% 200%;
+  animation: shine 15s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+.gold-accent {
+  position: relative;
+}
+
+.gold-accent::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(212, 175, 55, 0.8), 
+    transparent
+  );
+  transform: scaleX(0.3);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+.corner-decoration::before,
+.corner-decoration::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  transition: all 0.3s ease;
+}
+
+.corner-decoration:hover::before,
+.corner-decoration:hover::after {
+  border-color: rgba(212, 175, 55, 0.8);
+  width: 30px;
+  height: 30px;
+}
+
+.corner-decoration::before {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.corner-decoration::after {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+}
+
+/* Gold text with shimmer effect */
+.gold-shimmer {
+  background: linear-gradient(to right, #D4AF37 20%, #FFF0A0 40%, #E5C158 60%, #D4AF37 80%);
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: gold-shimmer 8s ease infinite;
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Animation delay utilities */
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
