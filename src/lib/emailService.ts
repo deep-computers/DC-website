@@ -29,8 +29,8 @@ interface OrderData {
 export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
   try {
     console.log('Preparing to send email for order:', data.orderId);
-    console.log('File names:', data.fileNames);
-    console.log('Payment proof:', data.paymentProofName);
+    console.log('File names received:', data.fileNames);
+    console.log('Payment proof received:', data.paymentProofName);
     
     // Format the order type nicely for the email
     const orderTypeLabels = {
@@ -42,22 +42,27 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     
     const orderTypeLabel = orderTypeLabels[data.orderType as keyof typeof orderTypeLabels] || data.orderType;
     
-    // Prepare file names string
-    const fileList = data.fileNames && data.fileNames.length > 0 && data.fileNames[0] !== undefined 
-      ? data.fileNames.join(', ') 
-      : 'No files uploaded';
-      
-    // Prepare payment proof name
-    const paymentProof = data.paymentProofName && data.paymentProofName !== undefined 
-      ? data.paymentProofName 
+    // Prepare file names string - ensure we're checking for valid array and valid elements
+    let fileList = 'No files uploaded';
+    if (Array.isArray(data.fileNames) && data.fileNames.length > 0) {
+      // Filter out any undefined or empty values
+      const validFileNames = data.fileNames.filter(name => name && name.trim().length > 0);
+      if (validFileNames.length > 0) {
+        fileList = validFileNames.join(', ');
+      }
+    }
+    
+    // Prepare payment proof name - ensure it's a valid string
+    const paymentProof = data.paymentProofName && typeof data.paymentProofName === 'string' && data.paymentProofName.trim().length > 0
+      ? data.paymentProofName
       : 'Not provided';
     
-    // Prepare the email template parameters - simplifying to essential fields
+    // Prepare the email template parameters
     const templateParams = {
       order_id: data.orderId,
       order_type: orderTypeLabel,
-      customer_name: data.contactInfo.name || data.contactInfo.email.split('@')[0] || 'Customer',
-      customer_email: data.contactInfo.email || 'noemail@example.com',
+      customer_name: data.contactInfo.name || (data.contactInfo.email ? data.contactInfo.email.split('@')[0] : 'Customer'),
+      customer_email: data.contactInfo.email || 'No email provided',
       customer_phone: data.contactInfo.phone || 'No phone provided',
       order_details: JSON.stringify(data.orderDetails, null, 2),
       file_list: fileList,
@@ -65,10 +70,9 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       order_date: new Date(data.timestamp).toLocaleString()
     };
 
-    console.log('Attempting to send order notification email');
-    console.log('Template params:', templateParams);
+    console.log('Sending email with parameters:', templateParams);
     
-    // Prepare a basic request payload
+    // Prepare the request payload
     const payload = JSON.stringify({
       service_id: SERVICE_ID,
       template_id: ORDER_TEMPLATE_ID,
@@ -76,7 +80,7 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       template_params: templateParams
     });
     
-    // Make a simple fetch request
+    // Make the REST API call
     const response = await fetch(EMAILJS_API_URL, {
       method: 'POST',
       headers: {
@@ -117,7 +121,9 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 /**
- * Simulate file upload and return the file name
+ * Process file upload and return the filename
+ * This is a simplified version that just returns the file name
+ * In a production environment, you'd upload to a server/cloud storage
  */
 export const uploadFileToWebhook = async (file: File): Promise<string | null> => {
   try {
@@ -126,11 +132,13 @@ export const uploadFileToWebhook = async (file: File): Promise<string | null> =>
       return null;
     }
     
-    console.log(`Simulating file upload for: ${file.name}`);
-    // Return the actual file name instead of a generic URL
+    console.log(`Processing file: ${file.name}`);
+    
+    // Since we don't have a real file storage service,
+    // just return the filename so it can be included in the email
     return file.name;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error processing file:', error);
     return null;
   }
 }; 
