@@ -6,21 +6,13 @@ import path from 'path';
 // Email configuration
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_USER = process.env.SMTP_USER || 'deepcomputer9200@gmail.com'; // Default email 
+const SMTP_PASS = process.env.SMTP_PASS || 'kqbw yyci qnsl pqku'; // Default app password
 const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'deepcomputer9200@gmail.com';
 const SENDER_EMAIL = process.env.SENDER_EMAIL || 'no-reply@dcprintingpress.com';
 
 export async function POST(request: NextRequest) {
   try {
-    // Create a directory for storing uploaded files if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
-      console.log('Directory already exists or could not be created');
-    }
-
     // Get the form data from the request
     const formData = await request.formData();
     
@@ -35,43 +27,73 @@ export async function POST(request: NextRequest) {
     const specifications = formData.get('specifications') as string || '{}';
     const timestamp = formData.get('timestamp') as string;
     
-    // Create an object to store all file paths
-    const attachmentPaths: string[] = [];
-    const uploadedFiles: { filename: string; originalName: string }[] = [];
-
-    // Process the uploaded files
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('file-') && value instanceof Blob) {
-        const file = value as File;
-        const uniqueFilename = `${orderId}-${key}-${file.name}`;
-        const filePath = path.join(uploadDir, uniqueFilename);
-        
-        // Convert file to buffer and save
-        const buffer = Buffer.from(await file.arrayBuffer());
-        await writeFile(filePath, buffer);
-        
-        // Add to attachments and uploaded files
-        attachmentPaths.push(filePath);
-        uploadedFiles.push({
-          filename: uniqueFilename,
-          originalName: file.name
-        });
-      }
-    }
+    let fileNames: string[] = [];
+    let paymentProofName = '';
     
-    // Process payment proof if provided
-    let paymentProofPath = '';
-    const paymentProof = formData.get('paymentProof');
-    if (paymentProof && paymentProof instanceof Blob) {
-      const file = paymentProof as File;
-      const uniqueFilename = `${orderId}-payment-proof-${file.name}`;
-      const filePath = path.join(uploadDir, uniqueFilename);
+    // In GitHub Pages or environments without filesystem access, we can't save files
+    // but we can extract file names for the email content
+    try {
+      // Create a directory for storing uploaded files if it doesn't exist
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      try {
+        await mkdir(uploadDir, { recursive: true });
+      } catch (error) {
+        console.log('Directory already exists or could not be created');
+      }
       
-      // Convert file to buffer and save
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(filePath, buffer);
+      // Process the uploaded files
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('file-') && value instanceof Blob) {
+          const file = value as File;
+          const uniqueFilename = `${orderId}-${key}-${file.name}`;
+          fileNames.push(file.name);
+          
+          try {
+            const filePath = path.join(uploadDir, uniqueFilename);
+            // Convert file to buffer and save
+            const buffer = Buffer.from(await file.arrayBuffer());
+            await writeFile(filePath, buffer);
+          } catch (error) {
+            console.error('Error saving file:', error);
+            // Continue without failing the whole request
+          }
+        }
+      }
       
-      paymentProofPath = filePath;
+      // Process payment proof if provided
+      const paymentProof = formData.get('paymentProof');
+      if (paymentProof && paymentProof instanceof Blob) {
+        const file = paymentProof as File;
+        paymentProofName = file.name;
+        
+        try {
+          const uniqueFilename = `${orderId}-payment-proof-${file.name}`;
+          const filePath = path.join(uploadDir, uniqueFilename);
+          
+          // Convert file to buffer and save
+          const buffer = Buffer.from(await file.arrayBuffer());
+          await writeFile(filePath, buffer);
+        } catch (error) {
+          console.error('Error saving payment proof:', error);
+          // Continue without failing the whole request
+        }
+      }
+    } catch (error) {
+      console.warn('File system operations failed, continuing with email only:', error);
+      
+      // If we can't write files, still capture file names for the email
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('file-') && value instanceof Blob) {
+          const file = value as File;
+          fileNames.push(file.name);
+        }
+      }
+      
+      // Process payment proof name
+      const paymentProof = formData.get('paymentProof');
+      if (paymentProof && paymentProof instanceof Blob) {
+        paymentProofName = (paymentProof as File).name;
+      }
     }
 
     // Format the order information for the email
@@ -122,28 +144,19 @@ export async function POST(request: NextRequest) {
     emailContent += `</ul>`;
     
     // Add information about uploaded files
-    if (uploadedFiles.length > 0) {
+    if (fileNames.length > 0) {
       emailContent += `<h3>Uploaded Files</h3><ul>`;
-      uploadedFiles.forEach(file => {
-        emailContent += `<li>${file.originalName}</li>`;
+      fileNames.forEach(fileName => {
+        emailContent += `<li>${fileName}</li>`;
       });
       emailContent += `</ul>`;
+      
+      // Add note about file access
+      emailContent += `<p><em>Note: Due to hosting limitations, files may not be attached. Please ask the customer to share them via WhatsApp or email if needed.</em></p>`;
     }
     
-    // Prepare email attachments
-    const attachments = [
-      ...attachmentPaths.map(path => ({
-        path,
-        filename: path.split('/').pop() || 'file'
-      }))
-    ];
-    
-    if (paymentProofPath) {
-      attachments.push({
-        path: paymentProofPath,
-        filename: paymentProofPath.split('/').pop() || 'payment-proof'
-      });
-      emailContent += `<p><strong>Payment Proof:</strong> Attached</p>`;
+    if (paymentProofName) {
+      emailContent += `<p><strong>Payment Proof:</strong> ${paymentProofName}</p>`;
     }
     
     // Set up the mail transporter
@@ -157,13 +170,13 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Send the email
+    // Send the email to the business
     await transporter.sendMail({
       from: `"DC Printing Press" <${SENDER_EMAIL}>`,
       to: RECIPIENT_EMAIL,
       subject: emailSubject,
       html: emailContent,
-      attachments
+      // Note: We're not attaching files since GitHub Pages doesn't support file storage
     });
     
     // Also send a confirmation email to the customer
@@ -179,8 +192,8 @@ export async function POST(request: NextRequest) {
       <p><strong>Date/Time:</strong> ${timestamp}</p>
       
       <p>If you have any questions about your order, please contact us at:</p>
-      <p>Email: support@dcprintingpress.com</p>
-      <p>Phone: +91-9311244099</p>
+      <p>Email: deepcomputer9200@gmail.com</p>
+      <p>WhatsApp: +91-9311244099</p>
       
       <p>Thank you for choosing DC Printing Press.</p>
     `;

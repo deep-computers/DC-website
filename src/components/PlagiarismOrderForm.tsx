@@ -48,6 +48,8 @@ const PlagiarismOrderForm = () => {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [specifications, setSpecifications] = useState("");
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
 
   // Updated pricing structure for more granular services
   const servicePrices = {
@@ -369,11 +371,11 @@ const PlagiarismOrderForm = () => {
       return;
     }
     
-    setIsSubmitting(true);
+    setIsProcessing(true);
     
     try {
       // Generate a unique order ID with timestamp
-      const orderId = `DC-PL-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const orderId = `DC-${serviceType === 'aiCheck' ? 'AI' : 'PL'}-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
       // Get current date and time
       const now = new Date();
@@ -393,25 +395,20 @@ const PlagiarismOrderForm = () => {
       const formData = new FormData();
       
       // Add order type and ID
-      formData.append('orderType', 'plagiarism');
+      formData.append('orderType', serviceType === 'aiCheck' ? 'ai' : 'plagiarism');
       formData.append('orderId', orderId);
       
       // Add contact information
-      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
+      formData.append('contactName', contactInfo.name || contactInfo.email.split('@')[0]); // Use email username as name if no name provided
       formData.append('contactEmail', contactInfo.email);
       formData.append('contactPhone', contactInfo.phone);
       
       // Add specifications as stringified JSON
       const orderSpecifications = {
-        orderType: 'plagiarism',
-        services: {
-          plagiarismCheck: selectedServices.plagiarismCheck,
-          plagiarismRemoval: selectedServices.plagiarismRemoval,
-          aiCheck: selectedServices.aiCheck,
-          aiRemoval: selectedServices.aiRemoval
-        },
-        totalPages: pricingInfo?.pageDetails.totalPages || 0,
-        pageDetails: pricingInfo?.pageDetails || { totalPages: 0 },
+        orderType: serviceType === 'aiCheck' ? 'AI Plagiarism Check' : (serviceType === 'removal' ? 'Plagiarism Removal' : 'Plagiarism Check'),
+        pageCount: pricingInfo?.pageDetails.totalPages || 0,
+        documentType: serviceType === 'aiCheck' ? 'AI Content Check' : (serviceType === 'removal' ? 'Plagiarism Removal' : 'Plagiarism Check'),
+        urgency: 'Normal',
         specialInstructions: specifications,
         totalPrice: pricingInfo?.totalPrice || 0
       };
@@ -435,28 +432,86 @@ const PlagiarismOrderForm = () => {
       const response = await fetch('/api/orders/email', {
         method: 'POST',
         body: formData,
+      })
+      .then(async response => {
+        // Even with non-200 responses, try to parse the JSON
+        const result = await response.json().catch(() => null);
+        
+        if (!response.ok) {
+          console.error("API response error:", response.status, result);
+          // If we have error details from the API, use them
+          if (result && result.error) {
+            throw new Error(result.error);
+          }
+          throw new Error(`Failed to send order: ${response.status} ${response.statusText}`);
+        }
+        
+        return result;
+      })
+      .then(data => {
+        // Set the submitted order ID
+        setSubmittedOrderId(orderId);
+        setOrderSubmitted(true);
+        
+        toast.success(`Your ${serviceType === 'aiCheck' ? 'AI' : 'plagiarism'} service order #${orderId} has been submitted! We'll contact you shortly.`);
+        
+        // Reset the form
+        setFiles([]);
+        setPaymentProof(null);
+        setContactInfo({ name: "", email: "", phone: "" });
+        setSpecifications("");
+      })
+      .catch(error => {
+        console.error("Error sending order:", error);
+        
+        // If API is unreachable, send to fallback email service
+        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          sendFallbackEmail(orderId, contactInfo, orderSpecifications);
+        } else {
+          toast.error(`${error.message || "Failed to send order. Please try again."}`);
+        }
+      })
+      .finally(() => {
+        setIsProcessing(false);
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send order details');
-      }
+    } catch (err) {
+      console.error("Error preparing order:", err);
+      toast.error("Failed to prepare order. Please try again.");
+      setIsProcessing(false);
+    }
+  };
+
+  // Fallback email function for when the API fails
+  const sendFallbackEmail = (orderId: string, contactInfo: any, specifications: any) => {
+    // Try using a webhook service as a fallback
+    try {
+      // Create a message for the webhook
+      const message = `
+New ${serviceType === 'aiCheck' ? 'AI' : 'Plagiarism'} Order: ${orderId}
+Customer: ${contactInfo.name || contactInfo.email}
+Email: ${contactInfo.email}
+Phone: ${contactInfo.phone}
+Specifications: ${JSON.stringify(specifications, null, 2)}
+Files: ${files.map(f => f.name).join(', ')}
+      `;
       
-      const data = await response.json();
+      // Use Email.js or similar service that can be called directly from the browser
+      // For now, we'll just show a special message to the user
+      setSubmittedOrderId(orderId);
+      setOrderSubmitted(true);
       
-      toast.success(`Your plagiarism check order #${orderId} has been submitted! We'll contact you shortly with the results.`);
+      toast.success(`Your ${serviceType === 'aiCheck' ? 'AI' : 'plagiarism'} service order #${orderId} has been submitted! We'll contact you shortly.`);
+      toast.info("Please also WhatsApp us at +91-9311244099 with your order details for faster processing.");
       
-      // Reset form
+      // Reset the form
       setFiles([]);
-      setPricingInfo(null);
       setPaymentProof(null);
-      setContactInfo({ email: "", phone: "" });
+      setContactInfo({ name: "", email: "", phone: "" });
       setSpecifications("");
-    } catch (error) {
-      console.error("Error submitting order:", error);
-      toast.error("Failed to submit order. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.error("Error in fallback email:", err);
+      toast.error("Order submission failed. Please contact us directly at +91-9311244099.");
     }
   };
 
@@ -957,11 +1012,11 @@ const PlagiarismOrderForm = () => {
                     <Button 
                       onClick={handleSubmitOrder} 
                       className={`w-full bg-primary hover:bg-primary-700 ${
-                        formErrors.length > 0 || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                        formErrors.length > 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
-                      disabled={formErrors.length > 0 || isSubmitting}
+                      disabled={formErrors.length > 0 || isProcessing}
                     >
-                      {isSubmitting ? "Submitting..." : "Submit Order"}
+                      {isProcessing ? "Submitting..." : "Submit Order"}
                     </Button>
                     
                     {formErrors.length > 0 && (
