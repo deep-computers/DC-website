@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, File, X, Plus, FileText, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { sendOrderEmail, uploadFileToWebhook } from "@/lib/emailService";
 
 interface FileWithPreview extends File {
   id: string;
@@ -54,6 +55,19 @@ interface OrderData {
     time: string;
     iso: string;
   };
+}
+
+// Define OrderDetails interface with optional fileLinks property
+interface OrderDetails {
+  orderType: string;
+  paperType: string;
+  bwPageCount: number;
+  colorPageCount: number;
+  copies: number;
+  colorOption: string;
+  specialInstructions: string;
+  totalPrice: number;
+  fileLinks?: string[];
 }
 
 const PrintOrderForm = () => {
@@ -279,132 +293,8 @@ const PrintOrderForm = () => {
     validateForm();
   }, [files, bwCount, colorCount, paymentProof, contactInfo, validateForm]);
 
-  const handleSubmitOrder = () => {
-    if (!validateForm()) {
-      // Show toast for each error
-      formErrors.forEach(error => {
-        toast.error(error);
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    try {
-      // Generate a unique order ID with timestamp
-      const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      
-      // Get current date and time
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('en-IN', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-      });
-      const timeStr = now.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true 
-      });
-      
-      // Create FormData for the API request
-      const formData = new FormData();
-      
-      // Add order type and ID
-      formData.append('orderType', 'print');
-      formData.append('orderId', orderId);
-      
-      // Add contact information
-      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
-      formData.append('contactEmail', contactInfo.email);
-      formData.append('contactPhone', contactInfo.phone);
-      
-      // Add specifications as stringified JSON
-      const orderSpecifications = {
-        orderType: 'print',
-        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
-        bwPageCount: bwCount,
-        colorPageCount: colorCount,
-        copies: copies,
-        colorOption: colorOption,
-        specialInstructions: specifications,
-        totalPrice: pricingInfo?.totalPrice || 0
-      };
-      
-      formData.append('specifications', JSON.stringify(orderSpecifications));
-      
-      // Add timestamp
-      formData.append('timestamp', now.toISOString());
-      
-      // Add each file
-      files.forEach((file, index) => {
-        formData.append(`file-${index}`, file);
-      });
-      
-      // Add payment proof if provided
-      if (paymentProof) {
-        formData.append('paymentProof', paymentProof);
-      }
-      
-      // Send to the API
-      fetch('/api/orders/email', {
-        method: 'POST',
-        body: formData,
-      })
-      .then(async response => {
-        // Even with non-200 responses, try to parse the JSON
-        const result = await response.json().catch(() => null);
-        
-        if (!response.ok) {
-          console.error("API response error:", response.status, result);
-          // If we have error details from the API, use them
-          if (result && result.error) {
-            throw new Error(result.error);
-          }
-          throw new Error(`Failed to send order: ${response.status} ${response.statusText}`);
-        }
-        
-        return result;
-      })
-      .then(data => {
-        // Set the submitted order ID
-        setSubmittedOrderId(orderId);
-        setOrderSubmitted(true);
-        
-        toast.success(`Your print order #${orderId} has been submitted! We'll contact you shortly.`);
-        
-        // Reset the form
-        setFiles([]);
-        setPricingInfo(null);
-        setPaymentProof(null);
-        setContactInfo({ email: "", phone: "" });
-        setBwCount(0);
-        setColorCount(0);
-        setSpecifications("");
-      })
-      .catch(error => {
-        console.error("Error sending order:", error);
-        
-        // If API is unreachable, send to fallback email service
-        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-          sendFallbackEmail(orderId, contactInfo, orderSpecifications);
-        } else {
-          toast.error(`${error.message || "Failed to send order. Please try again."}`);
-        }
-      })
-      .finally(() => {
-        setIsProcessing(false);
-      });
-    } catch (err) {
-      console.error("Error preparing order:", err);
-      toast.error("Failed to prepare order. Please try again.");
-      setIsProcessing(false);
-    }
-  };
-  
-  // Fallback email function for when the API fails
-  const sendFallbackEmail = (orderId: string, contactInfo: any, specifications: any) => {
+  // Fallback email function for when the email service fails
+  const sendFallbackEmail = (orderId: string, contactInfo: any, orderDetails: any) => {
     // Try using a webhook service as a fallback
     try {
       // Create a message for the webhook
@@ -412,7 +302,7 @@ const PrintOrderForm = () => {
 New Print Order: ${orderId}
 Customer: ${contactInfo.email}
 Phone: ${contactInfo.phone}
-Specifications: ${JSON.stringify(specifications, null, 2)}
+Specifications: ${JSON.stringify(orderDetails, null, 2)}
 Files: ${files.map(f => f.name).join(', ')}
       `;
       
@@ -435,6 +325,106 @@ Files: ${files.map(f => f.name).join(', ')}
     } catch (err) {
       console.error("Error in fallback email:", err);
       toast.error("Order submission failed. Please contact us directly at +91-9311244099.");
+    }
+  };
+  
+  const handleSubmitOrder = async () => {
+    if (!validateForm()) {
+      // Show toast for each error
+      formErrors.forEach(error => {
+        toast.error(error);
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    // Generate a unique order ID with timestamp
+    const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    
+    try {
+      // Get current date and time
+      const now = new Date();
+      
+      // Prepare order details
+      const orderDetails: OrderDetails = {
+        orderType: 'print',
+        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
+        bwPageCount: bwCount,
+        colorPageCount: colorCount,
+        copies: copies,
+        colorOption: colorOption,
+        specialInstructions: specifications,
+        totalPrice: pricingInfo?.totalPrice || 0
+      };
+      
+      // Get file names for the email
+      const fileNames = files.map(file => file.name);
+      const paymentProofName = paymentProof?.name || '';
+      
+      // Try to upload files to a temporary file storage service
+      let fileLinks: string[] = [];
+      try {
+        // Only upload the first few files if there are many (to avoid timeout)
+        const filesToUpload = files.slice(0, 3); // Limit to 3 files max
+        const uploadPromises = filesToUpload.map(file => uploadFileToWebhook(file));
+        fileLinks = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+        
+        // Add file links to order details if any were successfully uploaded
+        if (fileLinks.length > 0) {
+          orderDetails.fileLinks = fileLinks;
+        }
+      } catch (err) {
+        console.error("Error uploading files:", err);
+        // Continue without file uploads
+      }
+      
+      // Send email using EmailJS
+      const emailSuccess = await sendOrderEmail({
+        orderId,
+        orderType: 'print',
+        contactInfo: {
+          name: contactInfo.email.split('@')[0],
+          email: contactInfo.email,
+          phone: contactInfo.phone
+        },
+        orderDetails,
+        fileNames,
+        timestamp: now.toISOString(),
+        paymentProofName
+      });
+      
+      if (emailSuccess) {
+        // Set the submitted order ID
+        setSubmittedOrderId(orderId);
+        setOrderSubmitted(true);
+        
+        toast.success(`Your print order #${orderId} has been submitted! We'll contact you shortly.`);
+        
+        // Reset the form
+        setFiles([]);
+        setPricingInfo(null);
+        setPaymentProof(null);
+        setContactInfo({ email: "", phone: "" });
+        setBwCount(0);
+        setColorCount(0);
+        setSpecifications("");
+      } else {
+        // Try WhatsApp fallback
+        throw new Error("Email service failed");
+      }
+    } catch (err) {
+      console.error("Error preparing order:", err);
+      sendFallbackEmail(orderId, contactInfo, {
+        orderType: 'print',
+        paperType: gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`,
+        bwPageCount: bwCount,
+        colorPageCount: colorCount,
+        copies: copies,
+        totalPrice: pricingInfo?.totalPrice || 0
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
