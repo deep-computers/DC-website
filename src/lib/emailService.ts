@@ -3,15 +3,10 @@ import emailjs from '@emailjs/browser';
 // EmailJS configuration
 // You'll need to create an account at https://www.emailjs.com/ (they have a free tier)
 // Then create a service (e.g. Gmail, Outlook) and an email template
-const EMAILJS_SERVICE_ID = 'service_dtsv62p'; // Updated service ID
-const EMAILJS_ORDER_TEMPLATE_ID = 'order_template'; // General template for all orders
-const EMAILJS_CONFIRMATION_TEMPLATE_ID = 'confirmation_template'; // For customer confirmations
-const EMAILJS_USER_ID = 'L4CbIgz6e-N-NnwFl'; // Replace with your user ID from EmailJS dashboard
-
-// Initialize EmailJS
-emailjs.init({
-  publicKey: 'L4CbIgz6e-N-NnwFl',
-});
+const SERVICE_ID = 'service_dtsv62p';
+const ORDER_TEMPLATE_ID = 'template_zihqclr'; // Change to the actual template ID
+const CONFIRMATION_TEMPLATE_ID = 'template_bjsjyck'; // Change to the actual template ID
+const PUBLIC_KEY = 'L4CbIgz6e-N-NnwFl';
 
 interface OrderData {
   orderId: string;
@@ -60,13 +55,16 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
 
     console.log('Email template params:', templateParams);
 
-    // Send the order notification to the business
+    // Send the order notification to the business using the latest pattern
     console.log('Sending business notification email...');
     try {
       const response = await emailjs.send(
-        'service_dtsv62p',  // Service ID
-        'order_template',   // Template ID
-        templateParams
+        SERVICE_ID,
+        ORDER_TEMPLATE_ID,
+        templateParams,
+        {
+          publicKey: PUBLIC_KEY,
+        }
       );
       console.log('Business notification email sent successfully:', response);
     } catch (err) {
@@ -74,13 +72,14 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       throw err;
     }
     
-    // Also send a confirmation email to the customer if we have a confirmation template
+    // Also send a confirmation email to the customer
     try {
       // Simplified parameters for customer confirmation
       const confirmationParams = {
         order_id: data.orderId,
         order_type: orderTypeLabel,
         customer_name: data.contactInfo.name || data.contactInfo.email.split('@')[0],
+        customer_email: data.contactInfo.email,
         order_date: new Date(data.timestamp).toLocaleString(),
         total_price: data.orderDetails.totalPrice || 'Not specified',
         contact_email: 'deepcomputer9200@gmail.com',
@@ -89,9 +88,12 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       
       console.log('Sending customer confirmation email...');
       const confirmResponse = await emailjs.send(
-        'service_dtsv62p',  // Service ID
-        'confirmation_template',  // Template ID
-        confirmationParams
+        SERVICE_ID,
+        CONFIRMATION_TEMPLATE_ID,
+        confirmationParams,
+        {
+          publicKey: PUBLIC_KEY,
+        }
       );
       console.log('Customer confirmation email sent successfully:', confirmResponse);
       return true;
@@ -130,16 +132,8 @@ export const uploadFileToWebhook = async (file: File): Promise<string | null> =>
       return null;
     }
     
-    // Create form data
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Use a CORS-friendly service instead of file.io
-    // For now, we'll just simulate a successful upload
-    // In production, use a proper file storage service like AWS S3, Google Cloud Storage, etc.
+    // Just return a dummy link for now
     console.log('Simulating file upload for:', file.name);
-    
-    // Return a dummy link
     return `https://storage.example.com/files/${file.name}`;
   } catch (error) {
     console.error('Error uploading file:', error);
