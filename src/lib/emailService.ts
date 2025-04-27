@@ -30,6 +30,14 @@ interface OrderData {
  */
 export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
   try {
+    console.log('Sending email for order:', data.orderId);
+    console.log('EmailJS config:', {
+      serviceId: EMAILJS_SERVICE_ID,
+      orderTemplateId: EMAILJS_ORDER_TEMPLATE_ID,
+      confirmationTemplateId: EMAILJS_CONFIRMATION_TEMPLATE_ID,
+      userId: EMAILJS_USER_ID,
+    });
+    
     // Format the order type nicely for the email
     const orderTypeLabels = {
       'print': 'Printing',
@@ -54,12 +62,21 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       order_summary: JSON.stringify(data.orderDetails, null, 2)
     };
 
+    console.log('Email template params:', templateParams);
+
     // Send the order notification to the business
-    const response = await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_ORDER_TEMPLATE_ID,
-      templateParams
-    );
+    console.log('Sending business notification email...');
+    try {
+      const response = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_ORDER_TEMPLATE_ID,
+        templateParams
+      );
+      console.log('Business notification email sent successfully:', response);
+    } catch (err) {
+      console.error('Failed to send business notification email:', err);
+      throw err;
+    }
     
     // Also send a confirmation email to the customer if we have a confirmation template
     try {
@@ -74,18 +91,20 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
         contact_phone: '+91-9311244099'
       };
       
-      await emailjs.send(
+      console.log('Sending customer confirmation email...');
+      const confirmResponse = await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_CONFIRMATION_TEMPLATE_ID,
         confirmationParams,
         EMAILJS_USER_ID
       );
+      console.log('Customer confirmation email sent successfully:', confirmResponse);
+      return true;
     } catch (err) {
       // If confirmation email fails, just log it - the main notification is what matters
-      console.warn('Failed to send confirmation email:', err);
+      console.error('Failed to send confirmation email:', err);
+      return true; // Still return true if only the confirmation fails
     }
-
-    return response.status === 200;
   } catch (error) {
     console.error('Error sending email via EmailJS:', error);
     return false;
