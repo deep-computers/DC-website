@@ -4,7 +4,7 @@
 // EmailJS configuration
 // You'll need to create an account at https://www.emailjs.com/ (they have a free tier)
 // Then create a service (e.g. Gmail, Outlook) and an email template
-const SERVICE_ID = 'service_dtsv62p';
+const SERVICE_ID = 'service_kyceddb';
 const ORDER_TEMPLATE_ID = 'template_zihqclr'; // Change to the actual template ID
 const CONFIRMATION_TEMPLATE_ID = 'template_bjsjyck'; // Change to the actual template ID
 const PUBLIC_KEY = 'L4CbIgz6e-N-NnwFl';
