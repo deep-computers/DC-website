@@ -13,6 +13,7 @@ import { sendOrderEmail, uploadFileToWebhook, uploadFileToSupabase } from "@/lib
 interface FileWithPreview extends File {
   id: string;
   preview?: string;
+  orderId: string;
 }
 
 interface PricingInfo {
@@ -106,20 +107,28 @@ const PrintOrderForm = () => {
     if (!event.target.files) return;
     
     try {
+      setIsProcessing(true);
+      // Generate a temporary order ID for grouping files
+      const tempOrderId = generateSimpleId();
+      
       const newFiles = await Promise.all(Array.from(event.target.files).map(async file => {
-        const supabaseUrl = await uploadFileToSupabase(file);
+        // Upload to Supabase with the order ID in folder name
+        const supabaseUrl = await uploadFileToSupabase(file, `orders/${tempOrderId}`);
         if (supabaseUrl) {
           return {
             ...file,
             id: generateSimpleId(),
-            preview: supabaseUrl
-          } as FileWithPreview;
+            preview: supabaseUrl,
+            // Store the order ID with the file for later reference
+            orderId: tempOrderId
+          } as FileWithPreview & { orderId: string };
         } else {
           toast.error(`Failed to upload ${file.name} to cloud storage.`);
           return null;
         }
       }));
-      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+      
+      const filteredFiles = newFiles.filter(Boolean) as (FileWithPreview & { orderId: string })[];
       setFiles(prev => [...prev, ...filteredFiles]);
       event.target.value = "";
       toast.success(`${filteredFiles.length} file(s) uploaded successfully`);
@@ -127,6 +136,8 @@ const PrintOrderForm = () => {
       console.error("Error uploading file:", err);
       toast.error("Failed to upload file. Please try again.");
       if (event.target.value) event.target.value = "";
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -139,23 +150,35 @@ const PrintOrderForm = () => {
     e.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (!e.dataTransfer.files) return;
     
     try {
-      const newFiles = Array.from(e.dataTransfer.files).map(file => ({
-        ...file,
-        id: generateSimpleId(),
-        preview: URL.createObjectURL(file)
-      }) as FileWithPreview);
+      setIsProcessing(true);
+      const newFiles = await Promise.all(Array.from(e.dataTransfer.files).map(async file => {
+        const supabaseUrl = await uploadFileToSupabase(file);
+        if (supabaseUrl) {
+          return {
+            ...file,
+            id: generateSimpleId(),
+            preview: supabaseUrl
+          } as FileWithPreview;
+        } else {
+          toast.error(`Failed to upload ${file.name} to cloud storage.`);
+          return null;
+        }
+      }));
       
-      setFiles(prev => [...prev, ...newFiles]);
+      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+      setFiles(prev => [...prev, ...filteredFiles]);
       
-      toast.success(`${newFiles.length} file(s) uploaded successfully`);
+      toast.success(`${filteredFiles.length} file(s) uploaded successfully`);
     } catch (err) {
       console.error("Error in file drop:", err);
       toast.error("Failed to process dropped files. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -216,26 +239,36 @@ const PrintOrderForm = () => {
     setColorOption(value);
   };
 
-  const handlePaymentProofUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePaymentProofUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
     
     try {
+      setIsProcessing(true);
       const file = event.target.files[0];
       
-      const paymentFile = {
-        ...file,
-        id: generateSimpleId(),
-        preview: URL.createObjectURL(file),
-      } as FileWithPreview;
+      // Upload to Supabase with payment-proofs folder designation
+      const supabaseUrl = await uploadFileToSupabase(file, 'payment-proofs');
       
-      setPaymentProof(paymentFile);
-      toast.success("Payment proof uploaded successfully");
+      if (supabaseUrl) {
+        const paymentFile = {
+          ...file,
+          id: generateSimpleId(),
+          preview: supabaseUrl
+        } as FileWithPreview;
+        
+        setPaymentProof(paymentFile);
+        toast.success("Payment proof uploaded successfully");
+      } else {
+        toast.error("Failed to upload payment proof to storage");
+      }
       
       // Clear the input value
       if (event.target.value) event.target.value = "";
     } catch (err) {
       console.error("Error in payment proof upload:", err);
       toast.error("Failed to upload payment proof. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   }, []);
 
@@ -324,88 +357,72 @@ Files: ${files.map(f => f.name).join(', ')}
   };
   
   const handleSubmitOrder = async () => {
+    // Validate required fields
+    const errors = [];
+    if (files.length === 0) {
+      errors.push("Please upload at least one document to print");
+    }
+    if (!contactInfo.email && !contactInfo.phone) {
+      errors.push("Please provide either email or phone for contact");
+    }
+    if (!paymentProof) {
+      errors.push("Please upload payment proof");
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix the issues before submitting");
+      return;
+    }
+
     try {
       setIsProcessing(true);
-      setFormErrors([]);
+      toast.info("Processing your order...");
       
-      // Validate required fields
-      if (!contactInfo.email || !contactInfo.phone) {
-        toast.error("Please provide your contact information");
-        setIsProcessing(false);
-        return;
-      }
+      // Create a unique order ID for this submission
+      const orderId = `PR-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
       
-      // Validate at least one file is uploaded
-      if (files.length === 0) {
-        toast.error("Please upload at least one file");
-        setIsProcessing(false);
-        return;
-      }
+      // Move files to final order location if needed
+      const processedFileUrls: string[] = [];
       
-      // Validate payment proof
-      if (!paymentProof) {
-        toast.error("Please upload payment proof");
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Generate a unique order ID
-      const orderId = `DC-P-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000)}`;
-      
-      // Notify user that files are being processed (this may take time)
-      toast.info(
-        <div className="flex flex-col">
-          <p>Processing your files...</p>
-          <p className="text-xs mt-1">Please wait while we upload your files. This may take a moment.</p>
-        </div>
-      );
-      
-      // Process file uploads first and wait for them to complete
-      console.log('Starting file processing...');
-      console.log(`Files to process: ${files.length} files`, files.map(f => f.name));
-      
-      // Process all uploaded files, handling them sequentially to avoid race conditions
-      const processedFileNames: (string | null)[] = [];
+      // Reuploading files with the same order ID if needed
       for (const fileWithPreview of files) {
-        console.log(`Processing uploaded file: ${fileWithPreview.name}`, fileWithPreview);
         try {
-          // Pass the FileWithPreview object directly - it extends File so it should work
-          const fileName = await uploadFileToWebhook(fileWithPreview);
-          console.log(`File processed successfully: ${fileWithPreview.name} -> ${fileName}`);
-          processedFileNames.push(fileName);
+          if (fileWithPreview.preview && typeof fileWithPreview.preview === 'string') {
+            // If the file already has a preview URL, use it
+            processedFileUrls.push(fileWithPreview.preview);
+          } else {
+            // If for some reason the file doesn't have a Supabase URL yet
+            const supabaseUrl = await uploadFileToSupabase(fileWithPreview, `orders/${orderId}`, orderId);
+            if (supabaseUrl) {
+              processedFileUrls.push(supabaseUrl);
+            }
+          }
         } catch (error) {
           console.error(`Error processing file ${fileWithPreview.name}:`, error);
-          processedFileNames.push(null);
         }
       }
       
-      // Process payment proof if provided
-      let paymentProofName: string | null = null;
+      // Process payment proof - ensure it uses the same order ID
+      let paymentProofUrl: string | null = null;
       if (paymentProof) {
-        console.log(`Processing payment proof: ${paymentProof.name}`, paymentProof);
-        try {
-          paymentProofName = await uploadFileToWebhook(paymentProof);
-          console.log(`Payment proof processed: ${paymentProof.name} -> ${paymentProofName}`);
-        } catch (error) {
-          console.error('Error processing payment proof:', error);
+        if (paymentProof.preview && typeof paymentProof.preview === 'string') {
+          // If payment proof already has a preview URL, use it
+          paymentProofUrl = paymentProof.preview;
+        } else {
+          // If payment proof doesn't have a Supabase URL yet, upload with order ID
+          paymentProofUrl = await uploadFileToSupabase(
+            paymentProof, 
+            `payment-proofs/${orderId}`, 
+            orderId
+          );
         }
-      } else {
-        console.log('No payment proof provided');
       }
       
-      // Filter out null values from file names
-      const validFileNames = processedFileNames.filter((name): name is string => 
-        name !== null && typeof name === 'string' && name.trim().length > 0
+      // Filter out null values from file URLs
+      const validFileUrls = processedFileUrls.filter((url): url is string => 
+        url !== null && typeof url === 'string' && url.trim().length > 0
       );
-      
-      console.log('Processed file names:', validFileNames);
-      console.log('Payment proof name:', paymentProofName);
-      
-      // Wait an additional 3 seconds to ensure all files are fully processed
-      // This helps ensure everything is ready before sending the email
-      console.log('Waiting for all uploads to finalize...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      console.log('All uploads should be finalized now. Preparing to send email...');
       
       // Get current timestamp for the order
       const now = new Date();
@@ -426,16 +443,18 @@ Files: ${files.map(f => f.name).join(', ')}
           copies: copies,
           colorOption: colorOption,
           specialInstructions: specifications,
-          totalPrice: pricingInfo?.totalPrice || 0
+          totalPrice: pricingInfo?.totalPrice || 0,
+          fileLinks: validFileUrls,
+          paymentProof: paymentProofUrl || undefined
         },
-        fileNames: validFileNames,
-        paymentProofName: paymentProofName || undefined,
+        fileNames: files.map(f => f.name),
+        paymentProofName: paymentProofUrl || (paymentProof?.name || undefined),
         timestamp: now.toISOString()
       };
       
       // Verify files are included in the order data
-      if (validFileNames.length === 0) {
-        console.error('No valid file names were processed. Original files:', files.map(f => f.name));
+      if (validFileUrls.length === 0) {
+        console.error('No valid file URLs were processed. Original files:', files.map(f => f.name));
         toast.error("File upload issue detected. Please try again with smaller files or contact support.");
         setIsProcessing(false);
         return;
@@ -448,33 +467,25 @@ Files: ${files.map(f => f.name).join(', ')}
       const emailSent = await sendOrderEmail(orderData);
       
       if (emailSent) {
-        // Order successful
-        setSubmittedOrderId(orderId);
+        toast.success(`Order submitted successfully! Your order ID is ${orderId}`);
         setOrderSubmitted(true);
-        toast.success(
-          <div className="flex flex-col">
-            <p>Thank you for your order!</p>
-            <p className="text-xs mt-1">Order ID: {orderId}</p>
-          </div>
-        );
+        setSubmittedOrderId(orderId);
         
-        // Reset form for new orders
-        setFiles([]);
-        setPricingInfo(null);
-        setPaymentProof(null);
-        setContactInfo({ email: "", phone: "" });
+        // Clear form
         setBwCount(0);
         setColorCount(0);
+        setFiles([]);
+        setPaymentProof(null);
         setSpecifications("");
+        setPricingInfo(null);
       } else {
-        // Email failed, offer retry
-        setFormErrors(["There was a problem submitting your order. Please try again or contact us directly."]);
-        toast.error('Order submission failed. Please try again.');
+        toast.error("Failed to submit your order. Please try again or contact support.");
+        // Try fallback email method
+        sendFallbackEmail(orderId, contactInfo, orderData.orderDetails);
       }
     } catch (error) {
-      console.error('Order submission error:', error);
-      setFormErrors(["An unexpected error occurred. Please try again later or contact us directly."]);
-      toast.error('Something went wrong. Please try again.');
+      console.error("Order submission error:", error);
+      toast.error("An error occurred while submitting your order. Please try again.");
     } finally {
       setIsProcessing(false);
     }

@@ -65,6 +65,14 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       console.warn('data.fileNames is not a valid array or is empty:', data.fileNames);
     }
     
+    // Prepare file links list if available in orderDetails
+    let fileLinks = '';
+    if (data.orderDetails && data.orderDetails.fileLinks && Array.isArray(data.orderDetails.fileLinks)) {
+      fileLinks = data.orderDetails.fileLinks.join('\n');
+      // Add file links to orderDetails for storage/reference
+      data.orderDetails.fileList = fileLinks;
+    }
+    
     // Prepare payment proof name - ensure it's a valid string
     const paymentProof = data.paymentProofName && typeof data.paymentProofName === 'string' && data.paymentProofName.trim().length > 0
       ? data.paymentProofName
@@ -82,6 +90,15 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     // Add a short delay before sending to ensure all processing is complete
     console.log('Waiting before sending email to ensure all data is processed...');
     await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Store payment proof URL if it exists
+    if (data.orderDetails && !data.orderDetails.paymentProof && 
+        data.paymentProofName && typeof data.paymentProofName === 'string') {
+      // If the payment proof is actually a Supabase URL
+      if (data.paymentProofName.includes('supabase')) {
+        data.orderDetails.paymentProof = data.paymentProofName;
+      }
+    }
     
     // Prepare the email template parameters
     const templateParams = {
@@ -205,13 +222,25 @@ export const uploadFileToWebhook = async (file: File | undefined | null): Promis
 /**
  * Upload a file to Supabase Storage (uploads bucket)
  * Returns the public URL or null on failure
+ * @param file The file to upload
+ * @param folder Optional folder path (e.g., 'orders/123456', 'payment-proofs')
+ * @param orderId Optional order ID to associate with the file (will be included in filename)
  */
-export const uploadFileToSupabase = async (file: File, folder?: string): Promise<string | null> => {
+export const uploadFileToSupabase = async (
+  file: File, 
+  folder?: string, 
+  orderId?: string
+): Promise<string | null> => {
   try {
     if (!file) return null;
     const timestamp = Date.now();
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const filePath = `${folder ? folder + '/' : ''}${timestamp}_${cleanFileName}`;
+    
+    // Include orderId in the filename if provided
+    const filePrefix = orderId ? `${orderId}_` : '';
+    const filePath = `${folder ? folder + '/' : ''}${filePrefix}${timestamp}_${cleanFileName}`;
+    
+    console.log(`Uploading file to Supabase: ${filePath}`);
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage.from('uploads').upload(filePath, file, {
