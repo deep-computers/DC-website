@@ -233,39 +233,6 @@ const PrintOrderForm = () => {
     setColorOption(value);
   };
 
-  const handlePaymentProofUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) return;
-    
-    try {
-      setIsProcessing(true);
-      const file = event.target.files[0];
-      
-      // Upload to Supabase with payment-proofs folder designation
-      const supabaseUrl = await uploadFileToSupabase(file, 'payment-proofs');
-      
-      if (supabaseUrl) {
-        const paymentFile = {
-          ...file,
-          id: generateSimpleId(),
-          preview: supabaseUrl
-        } as FileWithPreview;
-        
-        setPaymentProof(paymentFile);
-        toast.success("Payment proof uploaded successfully");
-      } else {
-        toast.error("Failed to upload payment proof to storage");
-      }
-      
-      // Clear the input value
-      if (event.target.value) event.target.value = "";
-    } catch (err) {
-      console.error("Error in payment proof upload:", err);
-      toast.error("Failed to upload payment proof. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
-
   const handleRemovePaymentProof = () => {
     if (paymentProof) {
       setPaymentProofUrl(null);
