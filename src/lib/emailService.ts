@@ -232,7 +232,27 @@ export const uploadFileToSupabase = async (
   orderId?: string
 ): Promise<string | null> => {
   try {
-    if (!file) return null;
+    // Check for environment variables
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error('Supabase configuration missing: URL or ANON_KEY not found');
+      console.log('SUPABASE_URL exists:', !!SUPABASE_URL);
+      console.log('SUPABASE_ANON_KEY exists:', !!SUPABASE_ANON_KEY);
+      return null;
+    }
+
+    // Input validation
+    if (!file) {
+      console.error('File is null or undefined');
+      return null;
+    }
+
+    // Log file details for debugging
+    console.log('File upload details:');
+    console.log(`- Name: ${file.name}`);
+    console.log(`- Size: ${file.size} bytes (${Math.round(file.size/1024)} KB)`);
+    console.log(`- Type: ${file.type}`);
+    console.log(`- Last modified: ${new Date(file.lastModified).toISOString()}`);
+
     const timestamp = Date.now();
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     
@@ -241,21 +261,45 @@ export const uploadFileToSupabase = async (
     const filePath = `${folder ? folder + '/' : ''}${filePrefix}${timestamp}_${cleanFileName}`;
     
     console.log(`Uploading file to Supabase: ${filePath}`);
+    console.log(`Using bucket: 'uploads'`);
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage.from('uploads').upload(filePath, file, {
       cacheControl: '3600',
       upsert: false,
     });
+
     if (error) {
       console.error('Supabase upload error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      // Try to provide more specific error information
+      if (error.message?.includes('not found')) {
+        console.error('Bucket not found. Please create the "uploads" bucket in Supabase');
+      } else if (error.message?.includes('permission')) {
+        console.error('Permission denied. Check bucket policies');
+      } else if (error.message?.includes('exceeded')) {
+        console.error('File size may exceed limits');
+      }
       return null;
     }
+    
+    // Log successful upload
+    console.log('File uploaded successfully, getting public URL');
+    console.log('Upload response data:', data);
+    
     // Get public URL
     const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
-    return publicUrlData?.publicUrl || null;
+    
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      console.error('Failed to get public URL after successful upload');
+      return null;
+    }
+    
+    console.log('Public URL generated:', publicUrlData.publicUrl);
+    return publicUrlData.publicUrl;
   } catch (err) {
     console.error('Error uploading to Supabase:', err);
+    console.error('Error stack:', err instanceof Error ? err.stack : 'Unknown error');
     return null;
   }
 };
