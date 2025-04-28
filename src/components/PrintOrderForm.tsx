@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, File, X, Plus, FileText, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { sendOrderEmail, uploadFileToWebhook, uploadFileToSupabase } from "@/lib/emailService";
+import FileUpload from "@/components/ui/FileUpload";
 
 interface FileWithPreview extends File {
   id: string;
@@ -64,7 +65,6 @@ const PrintOrderForm = () => {
   const [colorOption, setColorOption] = useState("detect");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pricingInfo, setPricingInfo] = useState<PricingInfo | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const paymentProofRef = useRef<HTMLInputElement>(null);
   const [paymentProof, setPaymentProof] = useState<FileWithPreview | null>(null);
   const [contactInfo, setContactInfo] = useState({
@@ -75,6 +75,8 @@ const PrintOrderForm = () => {
   const [specifications, setSpecifications] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
 
   // Price per page (in INR)
   const prices = {
@@ -103,83 +105,75 @@ const PrintOrderForm = () => {
     });
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
+  const handleDocumentUpload = (fileUrl: string, file: File) => {
+    // Create a FileWithPreview object
+    const newFile = {
+      ...file,
+      id: generateSimpleId(),
+      preview: fileUrl,
+      orderId: generateSimpleId()
+    } as FileWithPreview;
     
-    try {
-      setIsProcessing(true);
-      // Generate a temporary order ID for grouping files
-      const tempOrderId = generateSimpleId();
-      
-      const newFiles = await Promise.all(Array.from(event.target.files).map(async file => {
-        // Upload to Supabase with the order ID in folder name
-        const supabaseUrl = await uploadFileToSupabase(file, `orders/${tempOrderId}`);
-        if (supabaseUrl) {
-          return {
-            ...file,
-            id: generateSimpleId(),
-            preview: supabaseUrl,
-            // Store the order ID with the file for later reference
-            orderId: tempOrderId
-          } as FileWithPreview & { orderId: string };
-        } else {
-          toast.error(`Failed to upload ${file.name} to cloud storage.`);
-          return null;
-        }
-      }));
-      
-      const filteredFiles = newFiles.filter(Boolean) as (FileWithPreview & { orderId: string })[];
-      setFiles(prev => [...prev, ...filteredFiles]);
-      event.target.value = "";
-      toast.success(`${filteredFiles.length} file(s) uploaded successfully`);
-    } catch (err) {
-      console.error("Error uploading file:", err);
-      toast.error("Failed to upload file. Please try again.");
-      if (event.target.value) event.target.value = "";
-    } finally {
-      setIsProcessing(false);
-    }
+    // Add to files array
+    setFiles(prev => [...prev, newFile]);
+    
+    // Add URL to documentUrls array
+    setDocumentUrls(prev => [...prev, fileUrl]);
+    
+    toast.success(`File ${file.name} uploaded successfully`);
+  };
+  
+  const handlePaymentProofUploadNew = (fileUrl: string, file: File) => {
+    // Create a FileWithPreview object
+    const newPaymentProof = {
+      ...file,
+      id: generateSimpleId(),
+      preview: fileUrl,
+      orderId: generateSimpleId()
+    } as FileWithPreview;
+    
+    // Set as payment proof
+    setPaymentProof(newPaymentProof);
+    
+    // Store the URL
+    setPaymentProofUrl(fileUrl);
+    
+    toast.success("Payment proof uploaded successfully");
   };
 
   const handleRemoveFile = (id: string) => {
-    setFiles(files.filter(file => file.id !== id));
+    setFiles(prevFiles => {
+      // Find the file to remove
+      const fileToRemove = prevFiles.find(file => file.id === id);
+      
+      // If found, also remove its URL from documentUrls
+      if (fileToRemove && fileToRemove.preview) {
+        setDocumentUrls(prev => prev.filter(url => url !== fileToRemove.preview));
+      }
+      
+      // Remove the file from files array
+      return prevFiles.filter(file => file.id !== id);
+    });
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation();
   };
 
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (!e.dataTransfer.files) return;
-    
-    try {
-      setIsProcessing(true);
-      const newFiles = await Promise.all(Array.from(e.dataTransfer.files).map(async file => {
-        const supabaseUrl = await uploadFileToSupabase(file);
-        if (supabaseUrl) {
-          return {
-            ...file,
-            id: generateSimpleId(),
-            preview: supabaseUrl
-          } as FileWithPreview;
-        } else {
-          toast.error(`Failed to upload ${file.name} to cloud storage.`);
-          return null;
-        }
-      }));
-      
-      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
-      setFiles(prev => [...prev, ...filteredFiles]);
-      
-      toast.success(`${filteredFiles.length} file(s) uploaded successfully`);
-    } catch (err) {
-      console.error("Error in file drop:", err);
-      toast.error("Failed to process dropped files. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
+  };
+
+  // For backwards compatibility, maintain a stub for the old upload function
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // This is just a stub - we're using the new FileUpload component now
+    console.log("Using old file upload handler - this should be replaced");
+  };
+
+  // For backwards compatibility, maintain a stub for the old payment proof upload
+  const handlePaymentProofUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // This is just a stub - we're using the new FileUpload component now
+    console.log("Using old payment proof upload handler - this should be replaced");
   };
 
   // Calculate price based on user inputs
@@ -273,10 +267,10 @@ const PrintOrderForm = () => {
   }, []);
 
   const handleRemovePaymentProof = () => {
-    if (paymentProof && paymentProof.preview) {
-      URL.revokeObjectURL(paymentProof.preview);
+    if (paymentProof) {
+      setPaymentProofUrl(null);
+      setPaymentProof(null);
     }
-    setPaymentProof(null);
   };
 
   const handleContactInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -382,47 +376,8 @@ Files: ${files.map(f => f.name).join(', ')}
       // Create a unique order ID for this submission
       const orderId = `PR-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
       
-      // Move files to final order location if needed
-      const processedFileUrls: string[] = [];
-      
-      // Reuploading files with the same order ID if needed
-      for (const fileWithPreview of files) {
-        try {
-          if (fileWithPreview.preview && typeof fileWithPreview.preview === 'string') {
-            // If the file already has a preview URL, use it
-            processedFileUrls.push(fileWithPreview.preview);
-          } else {
-            // If for some reason the file doesn't have a Supabase URL yet
-            const supabaseUrl = await uploadFileToSupabase(fileWithPreview, `orders/${orderId}`, orderId);
-            if (supabaseUrl) {
-              processedFileUrls.push(supabaseUrl);
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing file ${fileWithPreview.name}:`, error);
-        }
-      }
-      
-      // Process payment proof - ensure it uses the same order ID
-      let paymentProofUrl: string | null = null;
-      if (paymentProof) {
-        if (paymentProof.preview && typeof paymentProof.preview === 'string') {
-          // If payment proof already has a preview URL, use it
-          paymentProofUrl = paymentProof.preview;
-        } else {
-          // If payment proof doesn't have a Supabase URL yet, upload with order ID
-          paymentProofUrl = await uploadFileToSupabase(
-            paymentProof, 
-            `payment-proofs/${orderId}`, 
-            orderId
-          );
-        }
-      }
-      
-      // Filter out null values from file URLs
-      const validFileUrls = processedFileUrls.filter((url): url is string => 
-        url !== null && typeof url === 'string' && url.trim().length > 0
-      );
+      // Use the already uploaded file URLs - no need to reupload
+      const processedFileUrls = files.map(file => file.preview || '').filter(url => url);
       
       // Get current timestamp for the order
       const now = new Date();
@@ -444,16 +399,16 @@ Files: ${files.map(f => f.name).join(', ')}
           colorOption: colorOption,
           specialInstructions: specifications,
           totalPrice: pricingInfo?.totalPrice || 0,
-          fileLinks: validFileUrls,
-          paymentProof: paymentProofUrl || undefined
+          fileLinks: processedFileUrls,
+          paymentProof: paymentProof?.preview || undefined
         },
         fileNames: files.map(f => f.name),
-        paymentProofName: paymentProofUrl || (paymentProof?.name || undefined),
+        paymentProofName: paymentProof?.preview || (paymentProof?.name || undefined),
         timestamp: now.toISOString()
       };
       
       // Verify files are included in the order data
-      if (validFileUrls.length === 0) {
+      if (processedFileUrls.length === 0) {
         console.error('No valid file URLs were processed. Original files:', files.map(f => f.name));
         toast.error("File upload issue detected. Please try again with smaller files or contact support.");
         setIsProcessing(false);
@@ -476,6 +431,8 @@ Files: ${files.map(f => f.name).join(', ')}
         setColorCount(0);
         setFiles([]);
         setPaymentProof(null);
+        setDocumentUrls([]);
+        setPaymentProofUrl(null);
         setSpecifications("");
         setPricingInfo(null);
       } else {
@@ -525,24 +482,13 @@ Files: ${files.map(f => f.name).join(', ')}
                 <CardContent className="p-6">
                   <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Upload Your Files</h3>
                   
-                  <div 
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                  >
-                    <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h4 className="text-lg font-medium mb-2">Drag and drop your files here</h4>
-                    <p className="text-sm text-gray-500 mb-4">or click to browse</p>
-                    <p className="text-xs text-gray-400">Supported formats: PDF, DOC, DOCX</p>
-                    
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      accept=".pdf,.doc,.docx"
-                      multiple
+                  <div className="mb-6">
+                    <FileUpload
+                      onFileUpload={handleDocumentUpload}
+                      fileTypes=".pdf,.doc,.docx"
+                      maxSizeMB={10}
+                      label="Drag and drop your files here or click to browse"
+                      folder="print-orders"
                     />
                   </div>
                   
@@ -567,14 +513,16 @@ Files: ${files.map(f => f.name).join(', ')}
                           </div>
                         ))}
                       </div>
-                      <Button 
-                        onClick={() => fileInputRef.current?.click()} 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-3"
-                      >
-                        <Plus className="h-4 w-4 mr-2" /> Add More Files
-                      </Button>
+                      <div className="mt-3">
+                        <FileUpload
+                          onFileUpload={handleDocumentUpload}
+                          fileTypes=".pdf,.doc,.docx"
+                          maxSizeMB={10}
+                          label="Add more files"
+                          folder="print-orders"
+                          showFileDetails={false}
+                        />
+                      </div>
                     </div>
                   )}
                   
@@ -838,25 +786,16 @@ Files: ${files.map(f => f.name).join(', ')}
                           <p>4. We'll notify you when your order is ready for pickup.</p>
                         </div>
                         
-                        {/* Payment Proof Upload Section */}
                         <div className="border-t pt-4 mb-4">
                           <h4 className="font-medium mb-2">Upload Payment Proof</h4>
                           {!paymentProof ? (
-                            <div
-                              className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                              onClick={() => paymentProofRef.current?.click()}
-                            >
-                              <Upload className="h-6 w-6 mx-auto text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-600">Click to upload payment screenshot</p>
-                              <p className="text-xs text-gray-400 mt-1">Supported: JPG, PNG, PDF</p>
-                              <input
-                                type="file"
-                                ref={paymentProofRef}
-                                className="hidden"
-                                onChange={handlePaymentProofUpload}
-                                accept=".jpg,.jpeg,.png,.pdf"
-                              />
-                            </div>
+                            <FileUpload 
+                              onFileUpload={handlePaymentProofUploadNew}
+                              fileTypes=".jpg,.jpeg,.png,.pdf"
+                              maxSizeMB={5}
+                              label="Click to upload payment screenshot"
+                              folder="payment-proofs"
+                            />
                           ) : (
                             <div className="bg-gray-50 p-3 rounded-md">
                               <div className="flex items-center justify-between">
@@ -882,7 +821,6 @@ Files: ${files.map(f => f.name).join(', ')}
                           )}
                         </div>
                         
-                        {/* Contact Information */}
                         <div className="border-t pt-4 mb-4">
                           <h4 className="font-medium mb-2">Contact Information</h4>
                           <div className="space-y-3">
