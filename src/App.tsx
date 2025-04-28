@@ -14,6 +14,7 @@ import ServicesPage from "./pages/ServicesPage";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import FileUploadDemo from "./pages/FileUploadDemo";
+import FileUploadTest from "./pages/FileUploadTest";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/file-upload-demo" element={<FileUploadDemo />} />
+            <Route path="/file-upload-test" element={<FileUploadTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
