@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, File, X, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { uploadFileToSupabase } from '@/lib/emailService';
 
 export interface FileWithPreview extends File {
   id: string;
@@ -59,7 +60,7 @@ const OrderFileUpload = ({
     return { valid: true };
   };
 
-  const processFiles = (filesToProcess: FileList | File[]) => {
+  const processFiles = async (filesToProcess: FileList | File[]) => {
     if (files.length >= maxFiles) {
       toast.error(`Maximum ${maxFiles} files allowed`);
       return;
@@ -70,18 +71,24 @@ const OrderFileUpload = ({
     
     const validFiles: FileWithPreview[] = [];
     
-    filesToAdd.forEach(file => {
+    for (const file of filesToAdd) {
       const validation = validateFile(file);
       if (validation.valid) {
-        validFiles.push({
-          ...file,
-          id: generateSimpleId(),
-          preview: URL.createObjectURL(file)
-        } as FileWithPreview);
+        // Upload to Supabase
+        const supabaseUrl = await uploadFileToSupabase(file);
+        if (supabaseUrl) {
+          validFiles.push({
+            ...file,
+            id: generateSimpleId(),
+            preview: supabaseUrl // Use the public URL as preview
+          } as FileWithPreview);
+        } else {
+          toast.error(`Failed to upload ${file.name} to cloud storage.`);
+        }
       } else if (validation.message) {
         toast.error(validation.message);
       }
-    });
+    }
     
     if (validFiles.length > 0) {
       setFiles(prev => [...prev, ...validFiles]);
@@ -89,11 +96,11 @@ const OrderFileUpload = ({
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
     
     try {
-      processFiles(event.target.files);
+      await processFiles(event.target.files);
       // Reset input value to allow uploading the same file again
       event.target.value = "";
     } catch (err) {
@@ -131,13 +138,13 @@ const OrderFileUpload = ({
     setIsDragging(true);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
     
     if (!e.dataTransfer.files) return;
-    processFiles(e.dataTransfer.files);
+    await processFiles(e.dataTransfer.files);
   };
 
   const formatFileSize = (bytes: number): string => {

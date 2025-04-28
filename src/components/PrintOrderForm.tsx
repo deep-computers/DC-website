@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, File, X, Plus, FileText, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { sendOrderEmail, uploadFileToWebhook } from "@/lib/emailService";
+import { sendOrderEmail, uploadFileToWebhook, uploadFileToSupabase } from "@/lib/emailService";
 
 interface FileWithPreview extends File {
   id: string;
@@ -102,20 +102,27 @@ const PrintOrderForm = () => {
     });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
     
     try {
-      const newFiles = Array.from(event.target.files).map(file => ({
-        ...file,
-        id: generateSimpleId(),
-        preview: URL.createObjectURL(file)
-      }) as FileWithPreview);
-      
-      setFiles(prev => [...prev, ...newFiles]);
-      
+      const newFiles = await Promise.all(Array.from(event.target.files).map(async file => {
+        const supabaseUrl = await uploadFileToSupabase(file);
+        if (supabaseUrl) {
+          return {
+            ...file,
+            id: generateSimpleId(),
+            preview: supabaseUrl
+          } as FileWithPreview;
+        } else {
+          toast.error(`Failed to upload ${file.name} to cloud storage.`);
+          return null;
+        }
+      }));
+      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+      setFiles(prev => [...prev, ...filteredFiles]);
       event.target.value = "";
-      toast.success(`${newFiles.length} file(s) uploaded successfully`);
+      toast.success(`${filteredFiles.length} file(s) uploaded successfully`);
     } catch (err) {
       console.error("Error uploading file:", err);
       toast.error("Failed to upload file. Please try again.");

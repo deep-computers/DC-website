@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X, Plus, FileText, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { uploadFileToSupabase } from '@/lib/emailService';
 
 interface FileWithPreview extends File {
   id: string;
@@ -98,20 +99,24 @@ const PlagiarismOrderForm = () => {
       };
       
       const fileArray = Array.from(event.target.files);
-      const newFiles = fileArray.map((file) => {
-        return {
-          ...file,
-          id: generateSimpleId(),
-          preview: URL.createObjectURL(file),
-          totalPages: 0 // Initialize with 0 pages, will be set by user input
-        } as FileWithPreview;
-      });
-      
-      setFiles(prev => [...prev, ...newFiles]);
+      const newFiles = await Promise.all(fileArray.map(async (file) => {
+        const supabaseUrl = await uploadFileToSupabase(file);
+        if (supabaseUrl) {
+          return {
+            ...file,
+            id: generateSimpleId(),
+            preview: supabaseUrl,
+            totalPages: 0 // Initialize with 0 pages, will be set by user input
+          } as FileWithPreview;
+        } else {
+          toast.error(`Failed to upload ${file.name} to cloud storage.`);
+          return null;
+        }
+      }));
+      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+      setFiles(prev => [...prev, ...filteredFiles]);
       // Price will be calculated after user inputs page count
-      
-      toast.success(`${newFiles.length} file(s) uploaded successfully. Please enter the page count for each file.`);
-      
+      toast.success(`${filteredFiles.length} file(s) uploaded successfully. Please enter the page count for each file.`);
       // Clear the input value
       if (event.target.value) event.target.value = "";
     } catch (err) {
@@ -150,19 +155,24 @@ const PlagiarismOrderForm = () => {
         };
         
         const fileArray = Array.from(e.dataTransfer.files);
-        const newFiles = fileArray.map((file) => {
-          return {
-            ...file,
-            id: generateSimpleId(),
-            preview: URL.createObjectURL(file),
-            totalPages: 0 // Initialize with 0 pages, will be set by user input
-          } as FileWithPreview;
-        });
-        
-        setFiles(prev => [...prev, ...newFiles]);
+        const newFiles = await Promise.all(fileArray.map(async (file) => {
+          const supabaseUrl = await uploadFileToSupabase(file);
+          if (supabaseUrl) {
+            return {
+              ...file,
+              id: generateSimpleId(),
+              preview: supabaseUrl,
+              totalPages: 0 // Initialize with 0 pages, will be set by user input
+            } as FileWithPreview;
+          } else {
+            toast.error(`Failed to upload ${file.name} to cloud storage.`);
+            return null;
+          }
+        }));
+        const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+        setFiles(prev => [...prev, ...filteredFiles]);
         // Price will be calculated after user inputs page count
-        
-        toast.success(`${newFiles.length} file(s) uploaded successfully. Please enter the page count for each file.`);
+        toast.success(`${filteredFiles.length} file(s) uploaded successfully. Please enter the page count for each file.`);
       }
     } catch (err) {
       console.error("Error in drop handler:", err);

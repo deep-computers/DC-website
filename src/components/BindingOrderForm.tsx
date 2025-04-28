@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, File, X, Plus, FileText, Book, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadFileToSupabase } from '@/lib/emailService';
 
 interface FileWithPreview extends File {
   id: string;
@@ -101,7 +102,7 @@ const BindingOrderForm = () => {
         const extension = file.name.toLowerCase().split('.').pop();
         const isValidType = extension === 'pdf' || extension === 'doc' || extension === 'docx';
         if (!isValidType) {
-          toast.error(`File "${file.name}" is not supported. Only PDF and Word files are allowed.`);
+          toast.error(`File \"${file.name}\" is not supported. Only PDF and Word files are allowed.`);
         }
         return isValidType;
       });
@@ -113,15 +114,23 @@ const BindingOrderForm = () => {
         return;
       }
 
-      const newFiles = validFiles.map(file => ({
-        ...file,
-        id: crypto.randomUUID(),
-        preview: URL.createObjectURL(file)
-      }) as FileWithPreview);
-      
-      setFiles(prev => [...prev, ...newFiles]);
-      toast.success(`Successfully uploaded ${newFiles.length} file(s)`);
-      calculatePrice([...files, ...newFiles], bindingType, paperGsm, colorOption, coverPrintType);
+      const newFiles = await Promise.all(validFiles.map(async file => {
+        const supabaseUrl = await uploadFileToSupabase(file);
+        if (supabaseUrl) {
+          return {
+            ...file,
+            id: crypto.randomUUID(),
+            preview: supabaseUrl
+          } as FileWithPreview;
+        } else {
+          toast.error(`Failed to upload ${file.name} to cloud storage.`);
+          return null;
+        }
+      }));
+      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+      setFiles(prev => [...prev, ...filteredFiles]);
+      toast.success(`Successfully uploaded ${filteredFiles.length} file(s)`);
+      calculatePrice([...files, ...filteredFiles], bindingType, paperGsm, colorOption, coverPrintType);
     } catch (error) {
       console.error("Error in file upload:", error);
       toast.error("Failed to process files. Please try again.");
@@ -145,44 +154,45 @@ const BindingOrderForm = () => {
   const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
-      toast.error("No files dropped");
-      return;
-    }
-    
-    setIsProcessing(true);
     setIsLoadingFiles(true);
-    
+    setIsProcessing(true);
     try {
-      const fileArray = Array.from(e.dataTransfer.files);
-      const validFiles = fileArray.filter(file => {
-        const extension = file.name.toLowerCase().split('.').pop();
-        const isValidType = extension === 'pdf' || extension === 'doc' || extension === 'docx';
-        if (!isValidType) {
-          toast.error(`File "${file.name}" is not supported. Only PDF and Word files are allowed.`);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const fileArray = Array.from(e.dataTransfer.files);
+        const validFiles = fileArray.filter(file => {
+          const extension = file.name.toLowerCase().split('.').pop();
+          const isValidType = extension === 'pdf' || extension === 'doc' || extension === 'docx';
+          if (!isValidType) {
+            toast.error(`File \"${file.name}\" is not supported. Only PDF and Word files are allowed.`);
+          }
+          return isValidType;
+        });
+        if (validFiles.length === 0) {
+          toast.error("No valid files to upload");
+          setIsProcessing(false);
+          setIsLoadingFiles(false);
+          return;
         }
-        return isValidType;
-      });
-
-      if (validFiles.length === 0) {
-        toast.error("No valid files to drop");
-        setIsProcessing(false);
-        setIsLoadingFiles(false);
-        return;
+        const newFiles = await Promise.all(validFiles.map(async file => {
+          const supabaseUrl = await uploadFileToSupabase(file);
+          if (supabaseUrl) {
+            return {
+              ...file,
+              id: crypto.randomUUID(),
+              preview: supabaseUrl
+            } as FileWithPreview;
+          } else {
+            toast.error(`Failed to upload ${file.name} to cloud storage.`);
+            return null;
+          }
+        }));
+        const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
+        setFiles(prev => [...prev, ...filteredFiles]);
+        toast.success(`Successfully uploaded ${filteredFiles.length} file(s)`);
+        calculatePrice([...files, ...filteredFiles], bindingType, paperGsm, colorOption, coverPrintType);
       }
-
-      const newFiles = validFiles.map(file => ({
-        ...file,
-        id: crypto.randomUUID(),
-        preview: URL.createObjectURL(file)
-      }) as FileWithPreview);
-      
-      setFiles(prev => [...prev, ...newFiles]);
-      toast.success(`Successfully dropped ${newFiles.length} file(s)`);
-      calculatePrice([...files, ...newFiles], bindingType, paperGsm, colorOption, coverPrintType);
     } catch (error) {
-      console.error("Error in drop handler:", error);
+      console.error("Error in file drop:", error);
       toast.error("Failed to process dropped files. Please try again.");
     } finally {
       setIsProcessing(false);

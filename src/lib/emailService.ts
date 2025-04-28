@@ -9,6 +9,14 @@ const PUBLIC_KEY = 'ImIJIUQhlhqWByJGZ';
 // API URL
 const EMAILJS_API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 
+// --- Supabase Client Setup ---
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 interface OrderData {
   orderId: string;
   orderType: string;
@@ -192,4 +200,40 @@ export const uploadFileToWebhook = async (file: File | undefined | null): Promis
     console.error('Error processing file:', error);
     return null;
   }
-}; 
+};
+
+/**
+ * Upload a file to Supabase Storage (uploads bucket)
+ * Returns the public URL or null on failure
+ */
+export const uploadFileToSupabase = async (file: File, folder?: string): Promise<string | null> => {
+  try {
+    if (!file) return null;
+    const timestamp = Date.now();
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filePath = `${folder ? folder + '/' : ''}${timestamp}_${cleanFileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabase.storage.from('uploads').upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return null;
+    }
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+    return publicUrlData?.publicUrl || null;
+  } catch (err) {
+    console.error('Error uploading to Supabase:', err);
+    return null;
+  }
+};
+
+// --- Supabase Storage Integration ---
+// Add the following to your .env or Vite environment variables:
+// VITE_SUPABASE_URL=your-supabase-url
+// VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+//
+// Files will be uploaded to the 'uploads' bucket in Supabase Storage. 
