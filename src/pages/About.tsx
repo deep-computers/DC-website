@@ -337,13 +337,6 @@ const About = () => {
                       </Button>
                     </a>
                   )}
-                  {member.name === "Rajesh" && (
-                    <a href="https://wa.me/918383842368" target="_blank" rel="noreferrer" className="block w-full">
-                      <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
-                        WhatsApp Rajesh
-                      </Button>
-                    </a>
-                  )}
                 </motion.div>
               ))}
             </div>

@@ -9,14 +9,6 @@ const PUBLIC_KEY = 'ImIJIUQhlhqWByJGZ';
 // API URL
 const EMAILJS_API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 
-// --- Supabase Client Setup ---
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 interface OrderData {
   orderId: string;
   orderType: string;
@@ -68,15 +60,14 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     // Prepare file links list if available in orderDetails
     let fileLinks = '';
     if (data.orderDetails && data.orderDetails.fileLinks && Array.isArray(data.orderDetails.fileLinks)) {
-      fileLinks = data.orderDetails.fileLinks.join('\n');
+      // Convert array of links to a formatted string with one link per line
+      fileLinks = data.orderDetails.fileLinks.map((link: string, index: number) => 
+        `${index + 1}. ${data.fileNames[index] || 'File'}: ${link}`
+      ).join('\n');
+      
       // Add file links to orderDetails for storage/reference
       data.orderDetails.fileList = fileLinks;
     }
-    
-    // Prepare payment proof name - ensure it's a valid string
-    const paymentProof = data.paymentProofName && typeof data.paymentProofName === 'string' && data.paymentProofName.trim().length > 0
-      ? data.paymentProofName
-      : 'Not provided';
     
     // Format the timestamp nicely for display
     let orderDate = 'Unknown';
@@ -91,14 +82,8 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     console.log('Waiting before sending email to ensure all data is processed...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Store payment proof URL if it exists
-    if (data.orderDetails && !data.orderDetails.paymentProof && 
-        data.paymentProofName && typeof data.paymentProofName === 'string') {
-      // If the payment proof is actually a Supabase URL
-      if (data.paymentProofName.includes('supabase')) {
-        data.orderDetails.paymentProof = data.paymentProofName;
-      }
-    }
+    // Add payment proof URL if it exists in orderDetails
+    const paymentProofUrl = data.orderDetails?.paymentProof || 'Not provided';
     
     // Prepare the email template parameters
     const templateParams = {
@@ -109,7 +94,8 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
       customer_phone: data.contactInfo.phone || 'No phone provided',
       order_details: JSON.stringify(data.orderDetails, null, 2),
       file_list: fileList,
-      payment_proof: paymentProof,
+      file_links: fileLinks,
+      payment_proof: paymentProofUrl,
       order_date: orderDate
     };
 
@@ -152,161 +138,4 @@ export const sendOrderEmail = async (data: OrderData): Promise<boolean> => {
     console.error('Error in email sending process:', error);
     return false;
   }
-};
-
-/**
- * Convert file to base64 for attaching to emails
- */
-export const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      reject(new Error('No file provided'));
-      return;
-    }
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
-
-/**
- * Process file upload and return the filename
- * This is a simplified version that just returns the file name
- * In a production environment, you'd upload to a server/cloud storage
- */
-export const uploadFileToWebhook = async (file: File | undefined | null): Promise<string | null> => {
-  try {
-    // Validate file exists and has name property
-    if (!file) {
-      console.error('File is undefined or null in uploadFileToWebhook');
-      return null;
-    }
-    
-    if (!file.name) {
-      console.error('File name is undefined or invalid in uploadFileToWebhook');
-      return null;
-    }
-    
-    console.log(`Starting file upload process: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-    
-    // In a real implementation, you would upload the file to a server or cloud storage here
-    // For demonstration purposes, we'll log more detailed information and add a delay
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    
-    // Add a timestamp to make filenames unique
-    const timestamp = Date.now();
-    const uniqueFileName = `${timestamp}_${cleanFileName}`;
-    
-    console.log(`File processing: ${file.name}, creating unique name: ${uniqueFileName}`);
-    
-    // Simulate a more substantial file processing delay
-    // This gives enough time for larger files to be properly "uploaded" in simulation
-    console.log(`Uploading file ${file.name}...`);
-    
-    // Add a longer delay to simulate a proper upload process
-    // Files typically take time to upload based on size and connection speed
-    await new Promise(resolve => setTimeout(resolve, 3000 + Math.floor(file.size / 10000)));
-    
-    console.log(`File uploaded successfully: ${file.name}`);
-    
-    // Return the original file name so it's recognizable in the email
-    return file.name;
-  } catch (error) {
-    console.error('Error processing file:', error);
-    return null;
-  }
-};
-
-/**
- * Upload a file to Supabase Storage (uploads bucket)
- * Returns the public URL or null on failure
- * @param file The file to upload
- * @param folder Optional folder path (e.g., 'orders/123456', 'payment-proofs')
- * @param orderId Optional order ID to associate with the file (will be included in filename)
- */
-export const uploadFileToSupabase = async (
-  file: File, 
-  folder?: string, 
-  orderId?: string
-): Promise<string | null> => {
-  try {
-    // Check for environment variables
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Supabase configuration missing: URL or ANON_KEY not found');
-      console.log('SUPABASE_URL exists:', !!SUPABASE_URL);
-      console.log('SUPABASE_ANON_KEY exists:', !!SUPABASE_ANON_KEY);
-      return null;
-    }
-
-    // Input validation
-    if (!file) {
-      console.error('File is null or undefined');
-      return null;
-    }
-
-    // Log file details for debugging
-    console.log('File upload details:');
-    console.log(`- Name: ${file.name}`);
-    console.log(`- Size: ${file.size} bytes (${Math.round(file.size/1024)} KB)`);
-    console.log(`- Type: ${file.type}`);
-    console.log(`- Last modified: ${new Date(file.lastModified).toISOString()}`);
-
-    const timestamp = Date.now();
-    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    
-    // Include orderId in the filename if provided
-    const filePrefix = orderId ? `${orderId}_` : '';
-    const filePath = `${folder ? folder + '/' : ''}${filePrefix}${timestamp}_${cleanFileName}`;
-    
-    console.log(`Uploading file to Supabase: ${filePath}`);
-    console.log(`Using bucket: 'uploads'`);
-
-    // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage.from('uploads').upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-
-    if (error) {
-      console.error('Supabase upload error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      // Try to provide more specific error information
-      if (error.message?.includes('not found')) {
-        console.error('Bucket not found. Please create the "uploads" bucket in Supabase');
-      } else if (error.message?.includes('permission')) {
-        console.error('Permission denied. Check bucket policies');
-      } else if (error.message?.includes('exceeded')) {
-        console.error('File size may exceed limits');
-      }
-      return null;
-    }
-    
-    // Log successful upload
-    console.log('File uploaded successfully, getting public URL');
-    console.log('Upload response data:', data);
-    
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
-    
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      console.error('Failed to get public URL after successful upload');
-      return null;
-    }
-    
-    console.log('Public URL generated:', publicUrlData.publicUrl);
-    return publicUrlData.publicUrl;
-  } catch (err) {
-    console.error('Error uploading to Supabase:', err);
-    console.error('Error stack:', err instanceof Error ? err.stack : 'Unknown error');
-    return null;
-  }
-};
-
-// --- Supabase Storage Integration ---
-// Add the following to your .env or Vite environment variables:
-// VITE_SUPABASE_URL=your-supabase-url
-// VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-//
-// Files will be uploaded to the 'uploads' bucket in Supabase Storage. 
+}; 

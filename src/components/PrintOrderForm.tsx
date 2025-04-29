@@ -6,15 +6,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, File, X, Plus, FileText, Calendar, Clock } from "lucide-react";
+import { Upload, File, X, Plus, FileText, Calendar, Clock, Link } from "lucide-react";
 import { toast } from "sonner";
-import { sendOrderEmail, uploadFileToWebhook, uploadFileToSupabase } from "@/lib/emailService";
-import FileUpload from "@/components/ui/FileUpload";
+import { sendOrderEmail } from "@/lib/emailService";
 
-interface FileWithPreview extends File {
+interface FileWithPreview {
   id: string;
+  name: string;
   preview?: string;
   orderId: string;
+  url: string;
 }
 
 interface PricingInfo {
@@ -41,7 +42,7 @@ interface OrderData {
   paymentProofName?: string;
 }
 
-// Define OrderDetails interface with optional fileLinks property
+// Define OrderDetails interface with fileLinks property
 interface OrderDetails {
   orderType: string;
   paperType: string;
@@ -51,7 +52,7 @@ interface OrderDetails {
   colorOption: string;
   specialInstructions: string;
   totalPrice: number;
-  fileLinks?: string[];
+  fileLinks: string[];
   fileList?: string;
   paymentProof?: string;
 }
@@ -65,8 +66,7 @@ const PrintOrderForm = () => {
   const [colorOption, setColorOption] = useState("detect");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pricingInfo, setPricingInfo] = useState<PricingInfo | null>(null);
-  const paymentProofRef = useRef<HTMLInputElement>(null);
-  const [paymentProof, setPaymentProof] = useState<FileWithPreview | null>(null);
+  const [paymentProof, setPaymentProof] = useState<string>("");
   const [contactInfo, setContactInfo] = useState({
     email: "",
     phone: ""
@@ -75,8 +75,8 @@ const PrintOrderForm = () => {
   const [specifications, setSpecifications] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
-  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
-  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
+  const [newFileUrl, setNewFileUrl] = useState<string>("");
+  const [newFileName, setNewFileName] = useState<string>("");
 
   // Price per page (in INR)
   const prices = {
@@ -105,75 +105,36 @@ const PrintOrderForm = () => {
     });
   };
 
-  const handleDocumentUpload = (fileUrl: string, file: File) => {
-    // Create a FileWithPreview object
-    const newFile = {
-      ...file,
+  const addFileUrl = () => {
+    if (!newFileUrl) {
+      toast.error("Please enter a file URL");
+      return;
+    }
+
+    if (!newFileName) {
+      toast.error("Please enter a file name");
+      return;
+    }
+
+    // Create a new file entry
+    const newFile: FileWithPreview = {
       id: generateSimpleId(),
-      preview: fileUrl,
-      orderId: generateSimpleId()
-    } as FileWithPreview;
+      name: newFileName,
+      url: newFileUrl,
+      orderId: generateSimpleId(),
+      preview: newFileUrl
+    };
     
     // Add to files array
     setFiles(prev => [...prev, newFile]);
     
-    // Add URL to documentUrls array
-    setDocumentUrls(prev => [...prev, fileUrl]);
-    
-    toast.success(`File ${file.name} uploaded successfully`);
-  };
-  
-  const handlePaymentProofUploadNew = (fileUrl: string, file: File) => {
-    // Create a FileWithPreview object
-    const newPaymentProof = {
-      ...file,
-      id: generateSimpleId(),
-      preview: fileUrl,
-      orderId: generateSimpleId()
-    } as FileWithPreview;
-    
-    // Set as payment proof
-    setPaymentProof(newPaymentProof);
-    
-    // Store the URL
-    setPaymentProofUrl(fileUrl);
-    
-    toast.success("Payment proof uploaded successfully");
+    toast.success(`File ${newFileName} added successfully`);
+    setNewFileUrl("");
+    setNewFileName("");
   };
 
   const handleRemoveFile = (id: string) => {
-    setFiles(prevFiles => {
-      // Find the file to remove
-      const fileToRemove = prevFiles.find(file => file.id === id);
-      
-      // If found, also remove its URL from documentUrls
-      if (fileToRemove && fileToRemove.preview) {
-        setDocumentUrls(prev => prev.filter(url => url !== fileToRemove.preview));
-      }
-      
-      // Remove the file from files array
-      return prevFiles.filter(file => file.id !== id);
-    });
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  // For backwards compatibility, maintain a stub for the old upload function
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // This is just a stub - we're using the new FileUpload component now
-    console.log("Using old file upload handler - this should be replaced");
-  };
-
-  // For backwards compatibility, maintain a stub for the old payment proof upload
-  const handlePaymentProofUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // This is just a stub - we're using the new FileUpload component now
-    console.log("Using old payment proof upload handler - this should be replaced");
+    setFiles(prevFiles => prevFiles.filter(file => file.id !== id));
   };
 
   // Calculate price based on user inputs
@@ -233,13 +194,6 @@ const PrintOrderForm = () => {
     setColorOption(value);
   };
 
-  const handleRemovePaymentProof = () => {
-    if (paymentProof) {
-      setPaymentProofUrl(null);
-      setPaymentProof(null);
-    }
-  };
-
   const handleContactInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setContactInfo(prev => ({ ...prev, [name]: value }));
@@ -254,8 +208,8 @@ const PrintOrderForm = () => {
     const errors: string[] = [];
     
     if (!files.length) {
-      errors.push("Please upload at least one file");
-      console.warn("Form validation: No files uploaded");
+      errors.push("Please add at least one file URL");
+      console.warn("Form validation: No files added");
     }
     
     if (bwCount === 0 && colorCount === 0) {
@@ -264,7 +218,7 @@ const PrintOrderForm = () => {
     }
     
     if (!paymentProof) {
-      errors.push("Please upload payment proof");
+      errors.push("Please provide payment proof URL");
       console.warn("Form validation: No payment proof");
     }
     
@@ -306,7 +260,7 @@ Files: ${files.map(f => f.name).join(', ')}
       // Reset the form
       setFiles([]);
       setPricingInfo(null);
-      setPaymentProof(null);
+      setPaymentProof("");
       setContactInfo({ email: "", phone: "" });
       setBwCount(0);
       setColorCount(0);
@@ -321,13 +275,13 @@ Files: ${files.map(f => f.name).join(', ')}
     // Validate required fields
     const errors = [];
     if (files.length === 0) {
-      errors.push("Please upload at least one document to print");
+      errors.push("Please add at least one file URL to print");
     }
     if (!contactInfo.email && !contactInfo.phone) {
       errors.push("Please provide either email or phone for contact");
     }
     if (!paymentProof) {
-      errors.push("Please upload payment proof");
+      errors.push("Please provide payment proof URL");
     }
 
     if (errors.length > 0) {
@@ -343,8 +297,9 @@ Files: ${files.map(f => f.name).join(', ')}
       // Create a unique order ID for this submission
       const orderId = `PR-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
       
-      // Use the already uploaded file URLs - no need to reupload
-      const processedFileUrls = files.map(file => file.preview || '').filter(url => url);
+      // Get file URLs and names
+      const fileUrls = files.map(file => file.url);
+      const fileNames = files.map(file => file.name);
       
       // Get current timestamp for the order
       const now = new Date();
@@ -366,18 +321,18 @@ Files: ${files.map(f => f.name).join(', ')}
           colorOption: colorOption,
           specialInstructions: specifications,
           totalPrice: pricingInfo?.totalPrice || 0,
-          fileLinks: processedFileUrls,
-          paymentProof: paymentProof?.preview || undefined
+          fileLinks: fileUrls,
+          paymentProof: paymentProof
         },
-        fileNames: files.map(f => f.name),
-        paymentProofName: paymentProof?.preview || (paymentProof?.name || undefined),
+        fileNames: fileNames,
+        paymentProofName: "Payment proof URL provided",
         timestamp: now.toISOString()
       };
       
       // Verify files are included in the order data
-      if (processedFileUrls.length === 0) {
-        console.error('No valid file URLs were processed. Original files:', files.map(f => f.name));
-        toast.error("File upload issue detected. Please try again with smaller files or contact support.");
+      if (fileUrls.length === 0) {
+        console.error('No valid file URLs were provided. Original files:', files.map(f => f.name));
+        toast.error("Please add at least one file URL");
         setIsProcessing(false);
         return;
       }
@@ -397,9 +352,9 @@ Files: ${files.map(f => f.name).join(', ')}
         setBwCount(0);
         setColorCount(0);
         setFiles([]);
-        setPaymentProof(null);
-        setDocumentUrls([]);
-        setPaymentProofUrl(null);
+        setPaymentProof("");
+        setNewFileUrl("");
+        setNewFileName("");
         setSpecifications("");
         setPricingInfo(null);
       } else {
@@ -447,48 +402,93 @@ Files: ${files.map(f => f.name).join(', ')}
             <div className="lg:col-span-2">
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Upload Your Files</h3>
+                  <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Your Files</h3>
                   
                   <div className="mb-6">
-                    <FileUpload
-                      onFileUpload={handleDocumentUpload}
-                      fileTypes=".pdf,.doc,.docx"
-                      maxSizeMB={10}
-                      label="Drag and drop your files here or click to browse"
-                      folder="print-orders"
-                    />
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#D4AF37] transition-colors duration-300">
+                      <div className="flex flex-col space-y-4">
+                        <div className="text-center mb-2">
+                          <Upload className="h-12 w-12 mx-auto text-[#D4AF37] mb-2 animate-pulse" />
+                          <h4 className="font-medium text-lg text-gray-700">Add Your Files</h4>
+                          <p className="text-sm text-gray-500">Add files via URL links</p>
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <Label htmlFor="fileUrl">File URL (Google Drive, Dropbox, etc.)</Label>
+                          <Input 
+                            id="fileUrl"
+                            type="url" 
+                            placeholder="https://drive.google.com/file/..." 
+                            value={newFileUrl}
+                            onChange={(e) => setNewFileUrl(e.target.value)}
+                            className="border-[#D4AF37] focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <Label htmlFor="fileName">File Name</Label>
+                          <Input 
+                            id="fileName"
+                            type="text" 
+                            placeholder="Resume.pdf" 
+                            value={newFileName}
+                            onChange={(e) => setNewFileName(e.target.value)}
+                            className="border-[#D4AF37] focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                        <Button 
+                          onClick={addFileUrl}
+                          className="w-full bg-[#D4AF37] hover:bg-[#c9a632] text-white transition-all duration-300 transform hover:scale-[1.02]"
+                          type="button"
+                        >
+                          <Link className="h-4 w-4 mr-2" />
+                          Add File URL
+                        </Button>
+                        
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-sm text-blue-700">
+                            <strong>Don't know how to create a file URL?</strong> No problem! You can directly send your files to us via 
+                            <a href="https://wa.me/919311244099" className="font-bold text-blue-600 hover:underline px-1">
+                              WhatsApp (+91-9311244099)
+                            </a> 
+                            along with your order details.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
                   {files.length > 0 && (
                     <div className="mb-6">
-                      <h4 className="font-medium mb-3">Uploaded Files ({files.length})</h4>
+                      <h4 className="font-medium mb-3 flex items-center">
+                        <FileText className="h-5 w-5 text-[#D4AF37] mr-2" />
+                        Added Files ({files.length})
+                      </h4>
                       <div className="space-y-3">
                         {files.map((file) => (
-                          <div key={file.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                          <div 
+                            key={file.id} 
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-200 hover:shadow-md transition-all duration-300"
+                          >
                             <div className="flex items-center">
-                              <FileText className="h-5 w-5 text-primary mr-3" />
+                              <div className="h-10 w-10 flex items-center justify-center bg-[#D4AF37] bg-opacity-10 rounded-full mr-3">
+                                <FileText className="h-5 w-5 text-[#D4AF37]" />
+                              </div>
+                              <div>
                               <p className="text-sm font-medium truncate" style={{ maxWidth: '200px' }}>
                                 {file.name}
                               </p>
+                                <p className="text-xs text-gray-500 truncate" style={{ maxWidth: '200px' }}>
+                                  {file.url}
+                                </p>
+                              </div>
                             </div>
                             <button 
                               onClick={() => handleRemoveFile(file.id)} 
-                              className="text-gray-400 hover:text-red-500"
+                              className="text-gray-400 hover:text-red-500 transform hover:scale-110 transition-all duration-300"
                             >
                               <X className="h-5 w-5" />
                             </button>
                           </div>
                         ))}
-                      </div>
-                      <div className="mt-3">
-                        <FileUpload
-                          onFileUpload={handleDocumentUpload}
-                          fileTypes=".pdf,.doc,.docx"
-                          maxSizeMB={10}
-                          label="Add more files"
-                          folder="print-orders"
-                          showFileDetails={false}
-                        />
                       </div>
                     </div>
                   )}
@@ -498,356 +498,239 @@ Files: ${files.map(f => f.name).join(', ')}
                     <p className="text-sm text-gray-500 mb-3">
                       Enter the number of pages to print. You must enter these values manually.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="bw-pages">Black & White Pages</Label>
+                        <Label htmlFor="bwCount" className="mb-2 block">Black & White Pages</Label>
                         <Input 
-                          id="bw-pages" 
+                          id="bwCount"
                           type="number" 
-                          min={0} 
+                          min="0" 
+                          placeholder="0" 
                           value={bwCount} 
-                          onChange={e => {
-                            setBwCount(Number(e.target.value));
-                          }} 
+                          onChange={(e) => setBwCount(parseInt(e.target.value) || 0)}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="color-pages">Color Pages</Label>
+                        <Label htmlFor="colorCount" className="mb-2 block">Color Pages</Label>
                         <Input 
-                          id="color-pages" 
+                          id="colorCount"
                           type="number" 
-                          min={0} 
+                          min="0" 
+                          placeholder="0" 
                           value={colorCount} 
-                          onChange={e => {
-                            setColorCount(Number(e.target.value));
-                          }} 
+                          onChange={(e) => setColorCount(parseInt(e.target.value) || 0)}
                         />
                       </div>
                     </div>
                   </div>
                   
-                  {/* Specifications Text Area */}
                   <div className="mb-6">
-                    <Label htmlFor="specifications" className="font-medium mb-2 block">Order Specifications</Label>
-                    <p className="text-sm text-gray-500 mb-3">
-                      Please provide any specific instructions for your print job.
-                    </p>
-                    <textarea
-                      id="specifications"
-                      className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                      placeholder="Example: Pages 14-15, 46, 57 are colored and rest are black and white. Double-sided printing. Special instructions for binding, etc."
-                      value={specifications}
-                      onChange={handleSpecificationsChange}
+                    <Label htmlFor="copies" className="mb-2 block">Number of Copies</Label>
+                    <Input 
+                      id="copies"
+                      type="number" 
+                      min="1" 
+                      value={copies} 
+                      onChange={(e) => setCopies(parseInt(e.target.value) || 1)}
+                      className="w-full"
                     />
                   </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3">Paper Type</h4>
+                    <RadioGroup value={gsm} onValueChange={handleGsmChange}>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RadioGroupItem value="normal" id="normal" />
+                        <Label htmlFor="normal">Normal Paper (₹1/BW, ₹5/Color)</Label>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RadioGroupItem value="80" id="bond80" />
+                        <Label htmlFor="bond80">Bond Paper 80 GSM (₹2/BW, ₹6/Color)</Label>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RadioGroupItem value="90" id="bond90" />
+                        <Label htmlFor="bond90">Bond Paper 90 GSM (₹2.5/BW, ₹6.5/Color)</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="100" id="bond100" />
+                        <Label htmlFor="bond100">Bond Paper 100 GSM (₹3/BW, ₹7/Color)</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <Label htmlFor="paper-gsm" className="mb-2 block">Paper Type</Label>
-                      <Select value={gsm} onValueChange={handleGsmChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select paper type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal Paper</SelectItem>
-                          <SelectItem value="80">Bond Paper 80 GSM</SelectItem>
-                          <SelectItem value="90">Bond Paper 90 GSM</SelectItem>
-                          <SelectItem value="100">Bond Paper 100 GSM</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Select the paper type for your print
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label className="mb-2 block">Color Options</Label>
-                      <RadioGroup value={colorOption} onValueChange={handleColorOptionChange}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="detect" id="color-auto" />
-                          <Label htmlFor="color-auto">Auto Detect (Smart)</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="all-bw" id="color-bw" />
-                          <Label htmlFor="color-bw">All Black & White</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="all-color" id="color-all" />
-                          <Label htmlFor="color-all">All Color</Label>
-                        </div>
-                      </RadioGroup>
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3">Color Options</h4>
+                    <RadioGroup value={colorOption} onValueChange={handleColorOptionChange}>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RadioGroupItem value="detect" id="detect" />
+                        <Label htmlFor="detect">Auto-detect color pages</Label>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RadioGroupItem value="all-bw" id="all-bw" />
+                        <Label htmlFor="all-bw">All Black & White</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="all-color" id="all-color" />
+                        <Label htmlFor="all-color">All Color</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <Label htmlFor="specifications" className="mb-2 block">Special Instructions</Label>
+                    <textarea
+                      id="specifications"
+                      className="w-full p-2 border rounded-md h-24"
+                      value={specifications}
+                      onChange={handleSpecificationsChange}
+                      placeholder="Any special instructions for printing..."
+                    ></textarea>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3">Payment Proof URL</h4>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Please provide a screenshot URL of your payment (Google Drive, Dropbox, etc.)
+                    </p>
+                    <div className="mb-4">
+                      <Input 
+                        type="url" 
+                        placeholder="https://drive.google.com/file/..." 
+                        value={paymentProof}
+                        onChange={(e) => setPaymentProof(e.target.value)}
+                      />
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <Label htmlFor="copies" className="mb-2 block">Number of Copies</Label>
+                  <div className="mb-6">
+                    <Label htmlFor="email" className="mb-2 block">Contact Email</Label>
                       <Input
-                        id="copies"
-                        type="number"
-                        min="1"
-                        value={copies}
-                        onChange={(e) => setCopies(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full"
+                      id="email"
+                      type="email" 
+                      name="email"
+                      value={contactInfo.email}
+                      onChange={handleContactInfoChange}
+                      placeholder="your@email.com"
                       />
                     </div>
                     
-                    <div>
-                      <Label className="mb-2 block">Current Date & Time</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex items-center bg-gray-50 p-2 rounded-md">
-                          <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {new Date().toLocaleDateString('en-IN', { 
-                              day: '2-digit', 
-                              month: '2-digit', 
-                              year: 'numeric' 
-                            })}
-                          </span>
+                  <div className="mb-6">
+                    <Label htmlFor="phone" className="mb-2 block">Contact Phone</Label>
+                    <Input 
+                      id="phone"
+                      type="tel" 
+                      name="phone"
+                      value={contactInfo.phone}
+                      onChange={handleContactInfoChange}
+                      placeholder="Your phone number"
+                    />
                         </div>
-                        <div className="flex items-center bg-gray-50 p-2 rounded-md">
-                          <Clock className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {new Date().toLocaleTimeString('en-IN', { 
-                              hour: '2-digit', 
-                              minute: '2-digit',
-                              hour12: true 
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        This information will be captured with your order
-                      </p>
+                  
+                  {formErrors.length > 0 && (
+                    <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <h4 className="text-red-700 font-medium mb-2">Please fix the following issues:</h4>
+                      <ul className="list-disc pl-5">
+                        {formErrors.map((error, index) => (
+                          <li key={index} className="text-red-600 text-sm">{error}</li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
+                  )}
+                  
+                  <Button 
+                    onClick={handleSubmitOrder} 
+                    className="w-full bg-[#D4AF37] hover:bg-[#c9a632] text-white"
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Submit Print Order'}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="lg:col-span-1">
+            <div>
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Order Summary</h3>
+                  <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37] flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Order Summary
+                  </h3>
                   
-                  {/* QR Code Section - Always visible */}
-                  <div className="bg-white p-3 border border-primary/30 rounded-md mb-4">
-                    <p className="text-sm mb-2 text-center font-medium">Scan to pay</p>
-                    <div className="flex justify-center">
-                      <img 
-                        src="/images/payment-qr.jpg" 
-                        alt="PhonePe Payment QR" 
-                        className="w-full max-w-[200px] mx-auto border border-gray-200 p-1 rounded"
-                        style={{ display: 'block' }}
-                      />
-                    </div>
-                    <p className="text-xs text-center text-primary font-medium mt-2">Pay using any UPI app</p>
-                  </div>
-                  
-                  {!pricingInfo ? (
-                    <div className="text-center py-8">
-                      <div className="print-animation-container mx-auto mb-4 relative w-32 h-32">
-                        <div className="print-machine absolute w-full h-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-20 h-20 text-gray-500">
-                            <rect x="20" y="55" width="60" height="30" rx="2" className="fill-[#D4AF37]" />
-                            <rect x="25" y="60" width="50" height="20" rx="1" className="fill-white" />
-                            <rect x="35" y="40" width="30" height="15" rx="1" className="fill-gray-300" />
-                            <rect x="30" y="15" width="40" height="5" rx="1" className="fill-gray-400" />
-                          </svg>
-                        </div>
-                        <div className="paper-sheet absolute w-full h-5 bg-white border border-gray-200 top-1/3 left-0 print-paper-animation" />
-                        <div className="print-person absolute right-0 bottom-0 w-10 h-16">
-                          <div className="person-head w-6 h-6 rounded-full bg-[#F9D5A7] mx-auto" />
-                          <div className="person-body w-8 h-8 bg-[#3F88C5] mt-1 mx-auto rounded-t-md person-move-animation" />
-                        </div>
+                  {pricingInfo ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Paper Type:</span>
+                        <span className="text-[#D4AF37]">{gsm === "normal" ? "Normal Paper" : `Bond Paper ${gsm} GSM`}</span>
                       </div>
-                      <style dangerouslySetInnerHTML={{__html: `
-                        @keyframes printPaper {
-                          0% { transform: translateY(-100%); opacity: 0; }
-                          20% { transform: translateY(0%); opacity: 1; }
-                          80% { transform: translateY(0%); opacity: 1; }
-                          100% { transform: translateY(100%); opacity: 0; }
-                        }
-                        @keyframes personMove {
-                          0% { transform: translateX(0) rotate(0deg); }
-                          25% { transform: translateX(-5px) rotate(-5deg); }
-                          75% { transform: translateX(5px) rotate(5deg); }
-                          100% { transform: translateX(0) rotate(0deg); }
-                        }
-                        .print-paper-animation {
-                          animation: printPaper 3s infinite;
-                        }
-                        .person-move-animation {
-                          animation: personMove 2s infinite;
-                        }
-                      `}} />
-                      <p className="text-gray-500">Upload files and enter page counts to see pricing</p>
+                      
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">BW Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.bwPages}</span>
+                      </div>
+                      
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Color Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.colorPages}</span>
+                        </div>
+                        
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Total Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.totalPages}</span>
+                      </div>
+                      
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Copies:</span>
+                        <span className="text-[#D4AF37]">{copies}</span>
+                      </div>
+                      
+                      <div className="flex justify-between font-bold text-lg bg-gray-50 p-3 rounded-md mt-4 border border-gray-200">
+                        <span>Total Price:</span>
+                        <span className="text-[#D4AF37]">₹{pricingInfo.totalPrice}</span>
+                        </div>
+                      
+                      <div className="pt-4 bg-yellow-50 p-4 rounded-md border border-yellow-100 mt-6">
+                        <p className="text-sm text-gray-700">
+                          <strong>Payment Options:</strong> Google Pay, Phone Pay, PayTM
+                        </p>
+                        <p className="text-sm font-bold mt-2 flex items-center">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">UPI ID:</span>
+                          <span className="text-green-700">deepcomputers@sbi</span>
+                        </p>
+                      </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        <h4 className="font-medium mb-2">Document Details</h4>
-                        <ul className="space-y-1 text-sm">
-                          <li className="flex justify-between">
-                            <span>Total Files:</span>
-                            <span>{files.length}</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>Total Pages:</span>
-                            <span>{pricingInfo.pageDetails.totalPages}</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>Black & White Pages:</span>
-                            <span>{pricingInfo.pageDetails.bwPages}</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>Color Pages:</span>
-                            <span>{pricingInfo.pageDetails.colorPages}</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>Paper Quality:</span>
-                            <span>{
-                              gsm === "normal" ? "Normal Paper" : 
-                              gsm === "80" ? "Bond Paper 80 GSM" : 
-                              gsm === "90" ? "Bond Paper 90 GSM" : 
-                              "Bond Paper 100 GSM"
-                            }</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>Number of Copies:</span>
-                            <span>{copies}</span>
-                          </li>
-                        </ul>
-                        {specifications && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <h5 className="font-medium text-sm mb-1">Special Instructions:</h5>
-                            <p className="text-xs text-gray-600 whitespace-pre-line">{specifications}</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium mb-2">Pricing Breakdown</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>B&W Pages ({pricingInfo.pageDetails.bwPages} pages):</span>
-                            <span>₹{(pricingInfo.pageDetails.bwPages / copies) * prices.bw[gsm as keyof typeof prices.bw] * copies}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Color Pages ({pricingInfo.pageDetails.colorPages} pages):</span>
-                            <span>₹{(pricingInfo.pageDetails.colorPages / copies) * prices.color[gsm as keyof typeof prices.color] * copies}</span>
-                          </div>
-                          <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                            <span>Total:</span>
-                            <span>₹{pricingInfo.totalPrice}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium mb-2">Payment Instructions</h4>
-                        <div className="text-xs space-y-1 text-gray-500 mb-4">
-                          <p>1. After payment, please take a screenshot of the payment confirmation.</p>
-                          <p>2. Include your name and contact number with your order.</p>
-                          <p>3. Once verified, your prints will be ready for pickup within 1 hour.</p>
-                          <p>4. We'll notify you when your order is ready for pickup.</p>
-                        </div>
-                        
-                        <div className="border-t pt-4 mb-4">
-                          <h4 className="font-medium mb-2">Upload Payment Proof</h4>
-                          {!paymentProof ? (
-                            <FileUpload 
-                              onFileUpload={handlePaymentProofUploadNew}
-                              fileTypes=".jpg,.jpeg,.png,.pdf"
-                              maxSizeMB={5}
-                              label="Click to upload payment screenshot"
-                              folder="payment-proofs"
-                            />
-                          ) : (
-                            <div className="bg-gray-50 p-3 rounded-md">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <FileText className="h-5 w-5 text-primary mr-3" />
-                                  <div>
-                                    <p className="text-sm font-medium truncate" style={{ maxWidth: '200px' }}>
-                                      {paymentProof.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {Math.round(paymentProof.size / 1024)} KB
-                                    </p>
-                                  </div>
-                                </div>
-                                <button 
-                                  onClick={handleRemovePaymentProof} 
-                                  className="text-gray-400 hover:text-red-500"
-                                >
-                                  <X className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="border-t pt-4 mb-4">
-                          <h4 className="font-medium mb-2">Contact Information</h4>
-                          <div className="space-y-3">
-                            <div>
-                              <Label htmlFor="email" className="text-sm mb-1 block">Email</Label>
-                              <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="your@email.com"
-                                value={contactInfo.email}
-                                onChange={handleContactInfoChange}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="phone" className="text-sm mb-1 block">Phone Number</Label>
-                              <Input
-                                id="phone"
-                                name="phone"
-                                type="tel"
-                                placeholder="Your mobile number"
-                                value={contactInfo.phone}
-                                onChange={handleContactInfoChange}
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Please provide at least one contact method
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        onClick={handleSubmitOrder} 
-                        className={`w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black font-semibold ${
-                          formErrors.length > 0 ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        disabled={formErrors.length > 0 || isProcessing}
-                      >
-                        {isProcessing ? 'Processing...' : 'Submit Print Order'}
-                      </Button>
-                      
-                      {formErrors.length > 0 && (
-                        <div className="mt-2 text-xs text-red-500">
-                          <p>Please fix the following issues:</p>
-                          <ul className="list-disc list-inside mt-1">
-                            {formErrors.map((error, index) => (
-                              <li key={index}>{error}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      <p className="text-xs text-gray-500 text-center mt-2">
-                        You'll be contacted to confirm the order details
-                      </p>
+                    <div className="text-center py-10 bg-gray-50 rounded-lg">
+                      <FileText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                      <p className="text-gray-500">Please add files and specify pages to see pricing</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
+              
+              <div className="mt-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="font-serif text-xl font-semibold mb-4 text-[#D4AF37]">Need Help?</h3>
+                    <p className="text-gray-600 mb-4">
+                      Contact us for assistance with your printing needs.
+                    </p>
+                    <div className="space-y-2">
+                      <p className="flex items-center text-sm">
+                        <span className="font-medium mr-2">WhatsApp:</span>
+                        <a href="https://wa.me/919311244099" className="text-blue-600 hover:underline">
+                          +91-9311244099
+                        </a>
+                      </p>
+                      <p className="flex items-center text-sm">
+                        <span className="font-medium mr-2">Email:</span>
+                        <a href="mailto:deepcomputers1@gmail.com" className="text-blue-600 hover:underline">
+                          deepcomputers1@gmail.com
+                        </a>
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         )}

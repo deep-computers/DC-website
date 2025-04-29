@@ -6,13 +6,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, File, X, Plus, FileText, Book, BookOpen, Loader2 } from "lucide-react";
+import { Upload, File, X, Plus, FileText, Book, BookOpen, Loader2, Link } from "lucide-react";
 import { toast } from "sonner";
-import { uploadFileToSupabase } from '@/lib/emailService';
+import { sendOrderEmail } from '@/lib/emailService';
 
-interface FileWithPreview extends File {
+interface FileWithPreview {
   id: string;
-  preview?: string;
+  name: string;
+  url: string;
 }
 
 interface PricingInfo {
@@ -27,6 +28,20 @@ interface PricingInfo {
   };
 }
 
+interface OrderData {
+  orderId: string;
+  orderType: string;
+  contactInfo: {
+    name?: string;
+    email: string;
+    phone: string;
+  };
+  orderDetails: any;
+  fileNames: string[];
+  timestamp: string;
+  paymentProofName?: string;
+}
+
 const BindingOrderForm = () => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [bindingType, setBindingType] = useState("hard-normal");
@@ -36,9 +51,7 @@ const BindingOrderForm = () => {
   const [coverPrintType, setCoverPrintType] = useState("none");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pricingInfo, setPricingInfo] = useState<PricingInfo | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const paymentProofRef = useRef<HTMLInputElement>(null);
-  const [paymentProof, setPaymentProof] = useState<FileWithPreview | null>(null);
+  const [paymentProof, setPaymentProof] = useState<string>("");
   const [contactInfo, setContactInfo] = useState({
     email: "",
     phone: ""
@@ -51,8 +64,14 @@ const BindingOrderForm = () => {
   const [copies, setCopies] = useState(1);
   const [specifications, setSpecifications] = useState("");
   
+  // New file inputs
+  const [newFileUrl, setNewFileUrl] = useState<string>("");
+  const [newFileName, setNewFileName] = useState<string>("");
+  
   // Form validation
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
 
   // Binding prices
   const bindingPrices = {
@@ -87,118 +106,45 @@ const BindingOrderForm = () => {
     }
   };
 
-  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) {
-      toast.error("No files selected");
-      return;
-    }
-    
-    setIsProcessing(true);
-    setIsLoadingFiles(true);
-    
-    try {
-      const fileArray = Array.from(event.target.files);
-      const validFiles = fileArray.filter(file => {
-        const extension = file.name.toLowerCase().split('.').pop();
-        const isValidType = extension === 'pdf' || extension === 'doc' || extension === 'docx';
-        if (!isValidType) {
-          toast.error(`File \"${file.name}\" is not supported. Only PDF and Word files are allowed.`);
-        }
-        return isValidType;
-      });
+  const generateSimpleId = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
-      if (validFiles.length === 0) {
-        toast.error("No valid files to upload");
-        setIsProcessing(false);
-        setIsLoadingFiles(false);
+  const addFileUrl = () => {
+    if (!newFileUrl) {
+      toast.error("Please enter a file URL");
         return;
       }
 
-      const newFiles = await Promise.all(validFiles.map(async file => {
-        const supabaseUrl = await uploadFileToSupabase(file);
-        if (supabaseUrl) {
-          return {
-            ...file,
-            id: crypto.randomUUID(),
-            preview: supabaseUrl
-          } as FileWithPreview;
-        } else {
-          toast.error(`Failed to upload ${file.name} to cloud storage.`);
-          return null;
-        }
-      }));
-      const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
-      setFiles(prev => [...prev, ...filteredFiles]);
-      toast.success(`Successfully uploaded ${filteredFiles.length} file(s)`);
-      calculatePrice([...files, ...filteredFiles], bindingType, paperGsm, colorOption, coverPrintType);
-    } catch (error) {
-      console.error("Error in file upload:", error);
-      toast.error("Failed to process files. Please try again.");
-    } finally {
-      setIsProcessing(false);
-      setIsLoadingFiles(false);
-      if (event.target.value) event.target.value = "";
+    if (!newFileName) {
+      toast.error("Please enter a file name");
+      return;
     }
-  }, [files, bindingType, paperGsm, colorOption, coverPrintType]);
+
+    // Create a new file entry
+    const newFile: FileWithPreview = {
+      id: generateSimpleId(),
+      name: newFileName,
+      url: newFileUrl
+    };
+    
+    // Add to files array
+    setFiles(prev => [...prev, newFile]);
+    
+    toast.success(`File ${newFileName} added successfully`);
+    setNewFileUrl("");
+    setNewFileName("");
+    calculatePrice([...files, newFile], bindingType, paperGsm, colorOption, coverPrintType);
+  };
 
   const handleRemoveFile = (id: string) => {
     setFiles(files.filter(file => file.id !== id));
     calculatePrice(files.filter(file => file.id !== id), bindingType, paperGsm, colorOption, coverPrintType);
   };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsLoadingFiles(true);
-    setIsProcessing(true);
-    try {
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const fileArray = Array.from(e.dataTransfer.files);
-        const validFiles = fileArray.filter(file => {
-          const extension = file.name.toLowerCase().split('.').pop();
-          const isValidType = extension === 'pdf' || extension === 'doc' || extension === 'docx';
-          if (!isValidType) {
-            toast.error(`File \"${file.name}\" is not supported. Only PDF and Word files are allowed.`);
-          }
-          return isValidType;
-        });
-        if (validFiles.length === 0) {
-          toast.error("No valid files to upload");
-          setIsProcessing(false);
-          setIsLoadingFiles(false);
-          return;
-        }
-        const newFiles = await Promise.all(validFiles.map(async file => {
-          const supabaseUrl = await uploadFileToSupabase(file);
-          if (supabaseUrl) {
-            return {
-              ...file,
-              id: crypto.randomUUID(),
-              preview: supabaseUrl
-            } as FileWithPreview;
-          } else {
-            toast.error(`Failed to upload ${file.name} to cloud storage.`);
-            return null;
-          }
-        }));
-        const filteredFiles = newFiles.filter(Boolean) as FileWithPreview[];
-        setFiles(prev => [...prev, ...filteredFiles]);
-        toast.success(`Successfully uploaded ${filteredFiles.length} file(s)`);
-        calculatePrice([...files, ...filteredFiles], bindingType, paperGsm, colorOption, coverPrintType);
-      }
-    } catch (error) {
-      console.error("Error in file drop:", error);
-      toast.error("Failed to process dropped files. Please try again.");
-    } finally {
-      setIsProcessing(false);
-      setIsLoadingFiles(false);
-    }
-  }, [files, bindingType, paperGsm, colorOption, coverPrintType]);
 
   const calculatePrice = (
     currentFiles: FileWithPreview[], 
@@ -249,17 +195,6 @@ const BindingOrderForm = () => {
     calculatePrice(files, bindingType, paperGsm, colorOption, coverPrintType);
   }, [bwCount, colorCount, paperGsm, copies]);
 
-  // Cleanup file preview URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      files.forEach(file => {
-        if (file.preview) {
-          URL.revokeObjectURL(file.preview);
-        }
-      });
-    };
-  }, [files]);
-
   const handleBindingTypeChange = (value: string) => {
     setBindingType(value);
     
@@ -292,45 +227,6 @@ const BindingOrderForm = () => {
     calculatePrice(files, bindingType, paperGsm, colorOption, value);
   };
 
-  const handlePaymentProofUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) return;
-    
-    try {
-      const file = event.target.files[0];
-      
-      // Generate a simple UUID
-      const generateSimpleId = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      };
-      
-      const paymentFile = {
-        ...file,
-        id: generateSimpleId(),
-        preview: URL.createObjectURL(file),
-      } as FileWithPreview;
-      
-      setPaymentProof(paymentFile);
-      toast.success("Payment proof uploaded successfully");
-      
-      // Clear the input value
-      if (event.target.value) event.target.value = "";
-    } catch (err) {
-      console.error("Error in payment proof upload:", err);
-      toast.error("Failed to upload payment proof. Please try again.");
-    }
-  }, []);
-
-  const handleRemovePaymentProof = () => {
-    if (paymentProof && paymentProof.preview) {
-      URL.revokeObjectURL(paymentProof.preview);
-    }
-    setPaymentProof(null);
-  };
-
   const handleContactInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setContactInfo(prev => ({ ...prev, [name]: value }));
@@ -340,12 +236,12 @@ const BindingOrderForm = () => {
     setSpecifications(e.target.value);
   };
 
-  // Add validation function to check if all required fields are filled
+  // Update validation function to check if all required fields are filled
   const validateForm = useCallback(() => {
     const errors: string[] = [];
     
     if (files.length === 0) {
-      errors.push("Please upload at least one file");
+      errors.push("Please add at least one file URL");
     }
     
     if (bwCount === 0 && colorCount === 0) {
@@ -353,7 +249,7 @@ const BindingOrderForm = () => {
     }
     
     if (!paymentProof) {
-      errors.push("Please upload payment proof");
+      errors.push("Please provide payment proof URL");
     }
     
     if (!contactInfo.phone && !contactInfo.email) {
@@ -374,7 +270,7 @@ const BindingOrderForm = () => {
     validateForm();
   }, [files, bwCount, colorCount, paymentProof, contactInfo, bindingType, copies, validateForm]);
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (!validateForm()) {
       // Show toast for each error
       formErrors.forEach(error => {
@@ -389,35 +285,23 @@ const BindingOrderForm = () => {
       // Generate a unique order ID with timestamp
       const orderId = `DC-B-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
-      // Get current date and time
+      // Get file URLs and names
+      const fileUrls = files.map(file => file.url);
+      const fileNames = files.map(file => file.name);
+      
+      // Get current timestamp for the order
       const now = new Date();
-      const dateStr = now.toLocaleDateString('en-IN', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-      });
-      const timeStr = now.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true 
-      });
       
-      // Create FormData for the API request
-      const formData = new FormData();
-      
-      // Add order type and ID
-      formData.append('orderType', 'binding');
-      formData.append('orderId', orderId);
-      
-      // Add contact information
-      formData.append('contactName', contactInfo.email.split('@')[0]); // Use email username as name
-      formData.append('contactEmail', contactInfo.email);
-      formData.append('contactPhone', contactInfo.phone);
-      
-      // Add specifications as stringified JSON
-      const orderSpecifications = {
+      // Prepare the order data
+      const orderData: OrderData = {
+        orderId,
         orderType: 'binding',
+        contactInfo: {
+          name: contactInfo.email ? contactInfo.email.split('@')[0] : 'Customer',
+          email: contactInfo.email,
+          phone: contactInfo.phone
+        },
+        orderDetails: {
         bindingType,
         paperType: paperGsm === "normal" ? "Normal Paper" : `Bond Paper ${paperGsm} GSM`,
         bwPageCount: bwCount,
@@ -427,82 +311,58 @@ const BindingOrderForm = () => {
         coverColor,
         coverPrintType,
         specialInstructions: specifications,
-        totalPrice: pricingInfo?.totalPrice || 0
+          totalPrice: pricingInfo?.totalPrice || 0,
+          fileLinks: fileUrls,
+          paymentProof: paymentProof
+        },
+        fileNames: fileNames,
+        paymentProofName: "Payment proof URL provided",
+        timestamp: now.toISOString()
       };
       
-      formData.append('specifications', JSON.stringify(orderSpecifications));
-      
-      // Add timestamp
-      formData.append('timestamp', now.toISOString());
-      
-      // Add each file
-      files.forEach((file, index) => {
-        formData.append(`file-${index}`, file);
-      });
-      
-      // Add payment proof if provided
-      if (paymentProof) {
-        formData.append('paymentProof', paymentProof);
+      // Verify files are included in the order data
+      if (fileUrls.length === 0) {
+        console.error('No valid file URLs were provided. Original files:', files.map(f => f.name));
+        toast.error("Please add at least one file URL");
+        setIsProcessing(false);
+        return;
       }
       
-      // Send to the API
-      fetch('/api/orders/email', {
-        method: 'POST',
-        body: formData,
-      })
-      .then(async response => {
-        // Even with non-200 responses, try to parse the JSON
-        const result = await response.json().catch(() => null);
-        
-        if (!response.ok) {
-          console.error("API response error:", response.status, result);
-          // If we have error details from the API, use them
-          if (result && result.error) {
-            throw new Error(result.error);
-          }
-          throw new Error(`Failed to send order: ${response.status} ${response.statusText}`);
-        }
-        
-        return result;
-      })
-      .then(data => {
-        // Set the submitted order ID
-        setSubmittedOrderId(orderId);
+      console.log('Submitting order with data:', JSON.stringify(orderData, null, 2));
+      
+      // Send the order via email
+      toast.info("Sending your order...");
+      const emailSent = await sendOrderEmail(orderData);
+      
+      if (emailSent) {
+        toast.success(`Order submitted successfully! Your order ID is ${orderId}`);
         setOrderSubmitted(true);
+        setSubmittedOrderId(orderId);
         
-        toast.success(`Your binding order #${orderId} has been submitted! We'll contact you shortly.`);
-        
-        // Reset the form
-        setFiles([]);
-        setPricingInfo(null);
-        setPaymentProof(null);
-        setContactInfo({ email: "", phone: "" });
+        // Clear form
         setBwCount(0);
         setColorCount(0);
+        setFiles([]);
+        setPaymentProof("");
+        setNewFileUrl("");
+        setNewFileName("");
         setSpecifications("");
-      })
-      .catch(error => {
-        console.error("Error sending order:", error);
-        
-        // If API is unreachable, send to fallback email service
-        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-          sendFallbackEmail(orderId, contactInfo, orderSpecifications);
+        setPricingInfo(null);
         } else {
-          toast.error(`${error.message || "Failed to send order. Please try again."}`);
-        }
-      })
-      .finally(() => {
-        setIsProcessing(false);
-      });
-    } catch (err) {
-      console.error("Error preparing order:", err);
-      toast.error("Failed to prepare order. Please try again.");
+        toast.error("Failed to submit your order. Please try again or contact support.");
+        // Try fallback email method
+        sendFallbackEmail(orderId, contactInfo, orderData.orderDetails);
+      }
+    } catch (error) {
+      console.error("Order submission error:", error);
+      toast.error("An error occurred while submitting your order. Please try again.");
+    } finally {
       setIsProcessing(false);
     }
   };
   
-  // Fallback email function for when the API fails
-  const sendFallbackEmail = (orderId: string, contactInfo: any, specifications: any) => {
+  // Fallback email function for when the email service fails
+  const sendFallbackEmail = (orderId: string, contactInfo: any, orderDetails: any) => {
     // Try using a webhook service as a fallback
     try {
       // Create a message for the webhook
@@ -510,7 +370,7 @@ const BindingOrderForm = () => {
 New Binding Order: ${orderId}
 Customer: ${contactInfo.email}
 Phone: ${contactInfo.phone}
-Specifications: ${JSON.stringify(specifications, null, 2)}
+Specifications: ${JSON.stringify(orderDetails, null, 2)}
 Files: ${files.map(f => f.name).join(', ')}
       `;
       
@@ -524,7 +384,7 @@ Files: ${files.map(f => f.name).join(', ')}
       
       // Reset the form
       setFiles([]);
-      setPaymentProof(null);
+      setPaymentProof("");
       setContactInfo({ email: "", phone: "" });
       setCopies(1);
       setSpecifications("");
@@ -537,14 +397,6 @@ Files: ${files.map(f => f.name).join(', ')}
   // Check if binding type is a hard binding option
   const isHardBinding = bindingType.startsWith('hard-');
 
-  // Add click handler for the upload area
-  const handleUploadClick = useCallback(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // Clear the input
-      fileInputRef.current.click();
-    }
-  }, []);
-
   return (
     <div className="py-12 bg-white">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
@@ -555,73 +407,116 @@ Files: ${files.map(f => f.name).join(', ')}
           </p>
         </div>
         
+        {orderSubmitted && submittedOrderId ? (
+          <div className="max-w-md mx-auto bg-green-50 p-6 rounded-lg border border-green-200 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium text-green-800 mb-2">Order Submitted Successfully!</h3>
+            <p className="text-green-700 mb-4">Your order number is: <span className="font-bold">{submittedOrderId}</span></p>
+            <p className="text-sm text-green-600 mb-6">We have received your order and will contact you shortly.</p>
+            <Button 
+              onClick={() => setOrderSubmitted(false)} 
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Place Another Order
+            </Button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Upload Your Files</h3>
+                  <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Your Files</h3>
                 
-                <div 
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 cursor-pointer hover:bg-gray-50 transition-colors relative"
-                  onClick={handleUploadClick}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                >
-                  {isLoadingFiles ? (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="mb-6">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#D4AF37] transition-colors duration-300">
+                      <div className="flex flex-col space-y-4">
+                        <div className="text-center mb-2">
+                          <Upload className="h-12 w-12 mx-auto text-[#D4AF37] mb-2 animate-pulse" />
+                          <h4 className="font-medium text-lg text-gray-700">Add Your Files</h4>
+                          <p className="text-sm text-gray-500">Add files via URL links</p>
                     </div>
-                  ) : (
-                    <>
-                      <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <h4 className="text-lg font-medium mb-2">Drag and drop your files here</h4>
-                      <p className="text-sm text-gray-500 mb-4">or click to browse</p>
-                      <p className="text-xs text-gray-400">Supported formats: PDF, DOC, DOCX</p>
-                    </>
-                  )}
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    onClick={e => e.stopPropagation()} // Prevent double triggers
-                    accept=".pdf,.doc,.docx"
-                    multiple
-                  />
+                        <div className="flex flex-col space-y-2">
+                          <Label htmlFor="fileUrl">File URL (Google Drive, Dropbox, etc.)</Label>
+                          <Input 
+                            id="fileUrl"
+                            type="url" 
+                            placeholder="https://drive.google.com/file/..." 
+                            value={newFileUrl}
+                            onChange={(e) => setNewFileUrl(e.target.value)}
+                            className="border-[#D4AF37] focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <Label htmlFor="fileName">File Name</Label>
+                          <Input 
+                            id="fileName"
+                            type="text" 
+                            placeholder="Document.pdf" 
+                            value={newFileName}
+                            onChange={(e) => setNewFileName(e.target.value)}
+                            className="border-[#D4AF37] focus:ring-[#D4AF37]"
+                          />
+                        </div>
+                        <Button 
+                          onClick={addFileUrl}
+                          className="w-full bg-[#D4AF37] hover:bg-[#c9a632] text-white transition-all duration-300 transform hover:scale-[1.02]"
+                          type="button"
+                        >
+                          <Link className="h-4 w-4 mr-2" />
+                          Add File URL
+                        </Button>
+                        
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-sm text-blue-700">
+                            <strong>Don't know how to create a file URL?</strong> No problem! You can directly send your files to us via 
+                            <a href="https://wa.me/919311244099" className="font-bold text-blue-600 hover:underline px-1">
+                              WhatsApp (+91-9311244099)
+                            </a> 
+                            along with your order details.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                 </div>
                 
                 {files.length > 0 && (
                   <div className="mb-6">
-                    <h4 className="font-medium mb-3">Uploaded Files ({files.length})</h4>
+                      <h4 className="font-medium mb-3 flex items-center">
+                        <FileText className="h-5 w-5 text-[#D4AF37] mr-2" />
+                        Added Files ({files.length})
+                      </h4>
                     <div className="space-y-3">
                       {files.map((file) => (
-                        <div key={file.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                        <div 
+                          key={file.id} 
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-200 hover:shadow-md transition-all duration-300"
+                        >
                           <div className="flex items-center">
-                            <FileText className="h-5 w-5 text-[#D4AF37] mr-3" />
+                            <div className="h-10 w-10 flex items-center justify-center bg-[#D4AF37] bg-opacity-10 rounded-full mr-3">
+                              <FileText className="h-5 w-5 text-[#D4AF37]" />
+                            </div>
                             <div>
                               <p className="text-sm font-medium truncate" style={{ maxWidth: '200px' }}>
                                 {file.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate" style={{ maxWidth: '200px' }}>
+                                {file.url}
                               </p>
                             </div>
                           </div>
                           <button 
                             onClick={() => handleRemoveFile(file.id)} 
-                            className="text-gray-400 hover:text-red-500"
+                            className="text-gray-400 hover:text-red-500 transform hover:scale-110 transition-all duration-300"
                           >
                             <X className="h-5 w-5" />
                           </button>
                         </div>
                       ))}
                     </div>
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()} 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-3 border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> Add More Files
-                    </Button>
                   </div>
                 )}
                 
@@ -785,292 +680,159 @@ Files: ${files.map(f => f.name).join(', ')}
                     </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37]">Order Summary</h3>
-                
-                {/* QR Code Section - Always visible */}
-                <div className="bg-white p-3 border border-primary/30 rounded-md mb-4">
-                  <p className="text-sm mb-2 text-center font-medium">Scan to pay</p>
-                  <div className="flex justify-center">
-                    <img 
-                      src="/images/payment-qr.jpg" 
-                      alt="PhonePe Payment QR" 
-                      className="w-full max-w-[200px] mx-auto border border-gray-200 p-1 rounded"
-                      style={{ display: 'block' }}
+                  
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3">Payment Proof URL</h4>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Please provide a screenshot URL of your payment (Google Drive, Dropbox, etc.)
+                    </p>
+                    <div className="mb-4">
+                      <Input 
+                        type="url" 
+                        placeholder="https://drive.google.com/file/..." 
+                        value={paymentProof}
+                        onChange={(e) => setPaymentProof(e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-center text-primary font-medium mt-2">Pay using any UPI app</p>
                 </div>
                 
-                {!pricingInfo ? (
-                  <div className="text-center py-8">
-                    <div className="binding-animation-container mx-auto mb-4 relative w-32 h-32">
-                      <div className="book-pages absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-24">
-                        <div className="book-cover absolute w-20 h-24 bg-[#D4AF37] rounded-r"></div>
-                        <div className="book-page-1 absolute w-18 h-22 bg-white left-1 top-1 transform book-page-animation-1"></div>
-                        <div className="book-page-2 absolute w-18 h-22 bg-white left-1 top-1 transform book-page-animation-2"></div>
-                        <div className="book-page-3 absolute w-18 h-22 bg-white left-1 top-1 transform book-page-animation-3"></div>
-                        <div className="book-spine absolute left-0 top-0 w-2 h-24 bg-[#915E3F]"></div>
+                  <div className="mb-6">
+                    <Label htmlFor="email" className="mb-2 block">Contact Email</Label>
+                    <Input 
+                      id="email"
+                      type="email" 
+                      name="email"
+                      value={contactInfo.email}
+                      onChange={handleContactInfoChange}
+                      placeholder="your@email.com"
+                    />
                       </div>
-                      <div className="binding-person absolute right-0 bottom-0 w-12 h-24">
-                        <div className="person-head w-8 h-8 rounded-full bg-[#F9D5A7] mx-auto"></div>
-                        <div className="person-body w-10 h-10 bg-[#3F88C5] mt-1 mx-auto rounded-t-md binding-person-animation"></div>
-                        <div className="person-arm absolute w-8 h-2 bg-[#F9D5A7] right-2 top-12 transform origin-right binding-arm-animation"></div>
+                  
+                  <div className="mb-6">
+                    <Label htmlFor="phone" className="mb-2 block">Contact Phone</Label>
+                    <Input 
+                      id="phone"
+                      type="tel" 
+                      name="phone"
+                      value={contactInfo.phone}
+                      onChange={handleContactInfoChange}
+                      placeholder="Your phone number"
+                    />
                       </div>
-                      <div className="binding-tool absolute left-4 top-4 w-8 h-3 bg-[#915E3F] binding-tool-animation"></div>
-                    </div>
-                    <style jsx global>{`
-                      @keyframes pageFlip1 {
-                        0%, 20% { transform: rotateY(0deg); }
-                        30%, 100% { transform: rotateY(-180deg); }
-                      }
-                      @keyframes pageFlip2 {
-                        0%, 35% { transform: rotateY(0deg); }
-                        45%, 100% { transform: rotateY(-180deg); }
-                      }
-                      @keyframes pageFlip3 {
-                        0%, 50% { transform: rotateY(0deg); }
-                        60%, 100% { transform: rotateY(-180deg); }
-                      }
-                      @keyframes bindingPersonMove {
-                        0%, 100% { transform: translateY(0); }
-                        50% { transform: translateY(-3px); }
-                      }
-                      @keyframes bindingArmMove {
-                        0%, 100% { transform: rotate(0deg); }
-                        50% { transform: rotate(-15deg); }
-                      }
-                      @keyframes bindingToolMove {
-                        0%, 100% { transform: translateY(0) rotate(0deg); }
-                        50% { transform: translateY(15px) rotate(5deg); }
-                      }
-                      .book-page-animation-1 {
-                        animation: pageFlip1 4s infinite;
-                        transform-origin: left;
-                      }
-                      .book-page-animation-2 {
-                        animation: pageFlip2 4s infinite;
-                        transform-origin: left;
-                      }
-                      .book-page-animation-3 {
-                        animation: pageFlip3 4s infinite;
-                        transform-origin: left;
-                      }
-                      .binding-person-animation {
-                        animation: bindingPersonMove 1.5s infinite;
-                      }
-                      .binding-arm-animation {
-                        animation: bindingArmMove 1.5s infinite;
-                      }
-                      .binding-tool-animation {
-                        animation: bindingToolMove 1.5s infinite;
-                      }
-                    `}</style>
-                    <p className="text-gray-500">Upload files and set page counts to see pricing</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-md">
-                      <h4 className="font-medium mb-2">Document Details</h4>
-                      <ul className="space-y-1 text-sm">
-                        <li className="flex justify-between">
-                          <span>Total Files:</span>
-                          <span>{files.length}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Total Pages:</span>
-                          <span>{pricingInfo.pageDetails.totalPages}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Black & White Pages:</span>
-                          <span>{pricingInfo.pageDetails.bwPages}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Color Pages:</span>
-                          <span>{pricingInfo.pageDetails.colorPages}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Paper Quality:</span>
-                          <span>{paperGsm} GSM</span>
-                        </li>
+                  
+                  {formErrors.length > 0 && (
+                    <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <h4 className="text-red-700 font-medium mb-2">Please fix the following issues:</h4>
+                      <ul className="list-disc pl-5">
+                        {formErrors.map((error, index) => (
+                          <li key={index} className="text-red-600 text-sm">{error}</li>
+                        ))}
                       </ul>
-                      {specifications && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <h5 className="font-medium text-sm mb-1">Special Instructions:</h5>
-                          <p className="text-xs text-gray-600 whitespace-pre-line">{specifications}</p>
                         </div>
                       )}
+                  
+                  <Button 
+                    onClick={handleSubmitOrder} 
+                    className="w-full bg-[#D4AF37] hover:bg-[#c9a632] text-white"
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Submit Binding Order'}
+                  </Button>
+              </CardContent>
+            </Card>
                     </div>
                     
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Binding Details</h4>
-                      <ul className="space-y-1 text-sm">
-                        <li className="flex justify-between">
-                          <span>Binding Type:</span>
-                          <span>{bindingType.replace('-', ' ').replace(/^\w/, c => c.toUpperCase())}</span>
-                        </li>
-                        {isHardBinding && (
-                          <>
-                            <li className="flex justify-between">
-                              <span>Cover Color:</span>
-                              <span>{coverColor.charAt(0).toUpperCase() + coverColor.slice(1)}</span>
-                            </li>
-                            <li className="flex justify-between">
-                              <span>Cover Print:</span>
-                              <span>{coverPrintType === 'none' ? 'No Print' : 
-                                     coverPrintType === 'simple' ? 'Simple Text' : 'Premium Design'}</span>
-                            </li>
-                          </>
-                        )}
-                      </ul>
+            <div>
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="font-serif text-xl font-semibold mb-6 text-[#D4AF37] flex items-center">
+                  <Book className="h-5 w-5 mr-2" />
+                  Order Summary
+                </h3>
+                
+                  {pricingInfo ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Paper Type:</span>
+                        <span className="text-[#D4AF37]">{paperGsm === "normal" ? "Normal Paper" : `Bond Paper ${paperGsm} GSM`}</span>
                     </div>
                     
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Pricing Breakdown</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Printing ({pricingInfo.pageDetails.totalPages} pages):</span>
-                          <span>₹{pricingInfo.printPrice}</span>
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">BW Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.bwPages}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Binding ({copies} copies):</span>
-                          <span>₹{pricingInfo.bindingPrice}</span>
+                
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Color Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.colorPages}</span>
                         </div>
-                        {coverPrintType !== 'none' && (
-                          <div className="flex justify-between">
-                            <span>Cover Printing ({copies} copies):</span>
-                            <span>₹{pricingInfo.coverPrice}</span>
+                      
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Total Pages:</span>
+                        <span className="text-[#D4AF37]">{pricingInfo.pageDetails.totalPages}</span>
                           </div>
-                        )}
-                        <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                          <span>Total:</span>
-                          <span>₹{pricingInfo.totalPrice}</span>
-                        </div>
-                      </div>
+                    
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Binding Type:</span>
+                        <span className="text-[#D4AF37]">{bindingType.replace('-', ' ').replace(/^\w/, c => c.toUpperCase())}</span>
                     </div>
                     
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Payment Instructions</h4>
-                      <div className="text-xs space-y-1 text-gray-500 mb-4">
-                        <p>1. After payment, please take a screenshot of the payment confirmation.</p>
-                        <p>2. Include your name and contact number with your order.</p>
-                        <p>3. Once verified, your binding will be ready for pickup within 1-2 business days.</p>
-                        <p>4. We'll notify you when your order is ready for pickup.</p>
+                      <div className="flex justify-between border-b pb-2 hover:bg-gray-50 transition-all duration-300 p-2 rounded">
+                        <span className="font-medium">Copies:</span>
+                        <span className="text-[#D4AF37]">{copies}</span>
                       </div>
                       
-                      {/* Payment Proof Upload Section */}
-                      <div className="border-t pt-4 mb-4">
-                        <h4 className="font-medium mb-2">Upload Payment Proof</h4>
-                        {!paymentProof ? (
-                          <div
-                            className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                            onClick={() => paymentProofRef.current?.click()}
-                          >
-                            <Upload className="h-6 w-6 mx-auto text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-600">Click to upload payment screenshot</p>
-                            <p className="text-xs text-gray-400 mt-1">Supported: JPG, PNG, PDF</p>
-                            <input
-                              type="file"
-                              ref={paymentProofRef}
-                              className="hidden"
-                              onChange={handlePaymentProofUpload}
-                              accept=".jpg,.jpeg,.png,.pdf"
-                            />
+                      <div className="flex justify-between font-bold text-lg bg-gray-50 p-3 rounded-md mt-4 border border-gray-200">
+                        <span>Total Price:</span>
+                        <span className="text-[#D4AF37]">₹{pricingInfo.totalPrice}</span>
                           </div>
-                        ) : (
-                          <div className="bg-gray-50 p-3 rounded-md">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <FileText className="h-5 w-5 text-[#D4AF37] mr-3" />
-                                <div>
-                                  <p className="text-sm font-medium truncate" style={{ maxWidth: '200px' }}>
-                                    {paymentProof.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {Math.round(paymentProof.size / 1024)} KB
+                    
+                      <div className="pt-4 bg-yellow-50 p-4 rounded-md border border-yellow-100 mt-6">
+                        <p className="text-sm text-gray-700">
+                          <strong>Payment Options:</strong> Google Pay, Phone Pay, PayTM
+                        </p>
+                        <p className="text-sm font-bold mt-2 flex items-center">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">UPI ID:</span>
+                          <span className="text-green-700">deepcomputers@sbi</span>
                                   </p>
                                 </div>
                               </div>
-                              <button 
-                                onClick={handleRemovePaymentProof} 
-                                className="text-gray-400 hover:text-red-500"
-                              >
-                                <X className="h-5 w-5" />
-                              </button>
-                            </div>
+                  ) : (
+                    <div className="text-center py-10 bg-gray-50 rounded-lg">
+                      <Book className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                      <p className="text-gray-500">Please add files and specify pages to see pricing</p>
                           </div>
                         )}
-                      </div>
-                      
-                      {/* Contact Information */}
-                      <div className="border-t pt-4 mb-4">
-                        <h4 className="font-medium mb-2">Contact Information</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <Label htmlFor="email" className="text-sm mb-1 block">Email</Label>
-                            <Input
-                              id="email"
-                              name="email"
-                              type="email"
-                              placeholder="your@email.com"
-                              value={contactInfo.email}
-                              onChange={handleContactInfoChange}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="phone" className="text-sm mb-1 block">Phone Number</Label>
-                            <Input
-                              id="phone"
-                              name="phone"
-                              type="tel"
-                              placeholder="Your mobile number"
-                              value={contactInfo.phone}
-                              onChange={handleContactInfoChange}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Please provide at least one contact method
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={handleSubmitOrder} 
-                      className={`w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black font-semibold ${
-                        formErrors.length > 0 ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                      disabled={formErrors.length > 0}
-                    >
-                      Submit Binding Order
-                    </Button>
-                    
-                    {formErrors.length > 0 && (
-                      <div className="mt-2 text-xs text-red-500">
-                        <p>Please fix the following issues:</p>
-                        <ul className="list-disc list-inside mt-1">
-                          {formErrors.map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    <p className="text-xs text-gray-500 text-center">
-                      You'll be contacted to confirm the order details
+                </CardContent>
+              </Card>
+              
+              <div className="mt-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="font-serif text-xl font-semibold mb-4 text-[#D4AF37]">Need Help?</h3>
+                    <p className="text-gray-600 mb-4">
+                      Contact us for assistance with your binding needs.
+                    </p>
+                    <div className="space-y-2">
+                      <p className="flex items-center text-sm">
+                        <span className="font-medium mr-2">WhatsApp:</span>
+                        <a href="https://wa.me/919311244099" className="text-blue-600 hover:underline">
+                          +91-9311244099
+                        </a>
+                      </p>
+                      <p className="flex items-center text-sm">
+                        <span className="font-medium mr-2">Email:</span>
+                        <a href="mailto:deepcomputers1@gmail.com" className="text-blue-600 hover:underline">
+                          deepcomputers1@gmail.com
+                        </a>
                     </p>
                   </div>
-                )}
               </CardContent>
             </Card>
           </div>
         </div>
+          </div>
+        )}
       </div>
     </div>
   );
