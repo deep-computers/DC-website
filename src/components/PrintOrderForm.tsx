@@ -692,10 +692,14 @@ Files: ${files.map(f => f.name).join(', ')}
                         <p className="text-sm text-gray-700">
                           <strong>Payment Options:</strong> Google Pay, Phone Pay, PayTM
                         </p>
-                        <p className="text-sm font-bold mt-2 flex items-center">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">UPI ID:</span>
-                          <span className="text-green-700">deepcomputers@sbi</span>
-                        </p>
+                        <div className="mt-3 flex flex-col items-center">
+                          <p className="text-sm font-bold mb-2">Scan QR Code to Pay</p>
+                          <img 
+                            src="/images/payment-qr.jpg" 
+                            alt="Payment QR Code" 
+                            className="h-32 w-32 object-contain rounded-md border border-gray-200 shadow-sm" 
+                          />
+                        </div>
                       </div>
                     </div>
                   ) : (
