@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -49,11 +50,15 @@ const Header = () => {
   };
 
   return (
-    <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-      isScrolled 
-        ? 'bg-white/80 backdrop-blur-md border-b shadow-lg'
-        : 'bg-white/60 backdrop-blur-sm'
-    }`}>
+    <motion.header
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/80 backdrop-blur-md border-b shadow-lg'
+          : 'bg-white/60 backdrop-blur-sm'
+      }`}>
       <div className="container px-3 xs:px-4 sm:px-6 lg:px-8 flex h-14 sm:h-16 md:h-18 justify-between items-center">
         <div className="flex items-center">
           <Link to="/" className="flex items-center group">
@@ -74,9 +79,18 @@ const Header = () => {
         
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center space-x-3 lg:space-x-6">
-          <Link to="/services" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">Services</Link>
-          <Link to="/about" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">About</Link>
-          <Link to="/#pricing" onClick={(e) => handleNavigation(e, '/#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">Pricing</Link>
+          <Link to="/services" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            Services
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link to="/about" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            About
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link to="/#pricing" onClick={(e) => handleNavigation(e, '/#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            Pricing
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -108,9 +122,18 @@ const Header = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Link to="/#testimonials" onClick={(e) => handleNavigation(e, '/#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">Testimonials</Link>
-          <Link to="/#faq" onClick={(e) => handleNavigation(e, '/#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">FAQ</Link>
-          <Link to="/#contact" onClick={(e) => handleNavigation(e, '/#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-all duration-300 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-0 after:bg-[#D4AF37] after:transition-all after:duration-300 hover:after:w-full">Contact</Link>
+          <Link to="/#testimonials" onClick={(e) => handleNavigation(e, '/#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            Testimonials
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link to="/#faq" onClick={(e) => handleNavigation(e, '/#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            FAQ
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link to="/#contact" onClick={(e) => handleNavigation(e, '/#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            Contact
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
         </nav>
         
         <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
@@ -166,58 +189,76 @@ const Header = () => {
       </div>
       
       {/* Mobile menu */}
-      <div className={`md:hidden fixed inset-0 z-50 transform ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300 ease-in-out`}>
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
-        <div className="absolute right-0 h-full w-64 sm:w-72 bg-white shadow-xl overflow-y-auto">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-[#D4AF37] transition-colors">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            
-            <nav className="space-y-4">
-              <Link to="/services" className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Services</Link>
-              <Link to="/about" className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">About</Link>
-              <Link to="/#pricing" onClick={(e) => handleNavigation(e, '/#pricing')} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Pricing</Link>
-              
-              <div className="py-2">
-                <p className="text-sm font-medium text-gray-500 mb-3">Order Services</p>
-                <div className="space-y-3">
-                  <Link to="/print-order" className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print Order
-                  </Link>
-                  <Link to="/binding-order" className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Binding Order
-                  </Link>
-                  <Link to="/plagiarism-order" className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <ShieldCheck className="h-4 w-4 mr-2" />
-                    Plagiarism Services
-                  </Link>
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            key="mobile-menu"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className={`md:hidden fixed inset-0 z-50 transform`}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setIsMenuOpen(false)}
+            ></motion.div>
+            <div className="absolute right-0 h-full w-64 sm:w-72 bg-white shadow-xl overflow-y-auto">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
+                  <div className="flex items-center space-x-2">
+                    <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-[#D4AF37] transition-colors">
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
+                
+                <nav className="space-y-4">
+                  <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Services</Link>
+                  <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">About</Link>
+                  <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Pricing</Link>
+                  
+                  <div className="py-2">
+                    <p className="text-sm font-medium text-gray-500 mb-3">Order Services</p>
+                    <div className="space-y-3">
+                      <Link to="/print-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print Order
+                      </Link>
+                      <Link to="/binding-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Binding Order
+                      </Link>
+                      <Link to="/plagiarism-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                        Plagiarism Services
+                      </Link>
+                    </div>
+                  </div>
+                  
+                  <Link to="/#testimonials" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Testimonials</Link>
+                  <Link to="/#faq" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">FAQ</Link>
+                  <Link to="/#contact" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Contact</Link>
+                </nav>
+                
+                <div className="pt-6 border-t border-gray-100">
+                  <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full">
+                    <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
+                      WhatsApp Us
+                    </Button>
+                  </a>
                 </div>
               </div>
-              
-              <Link to="/#testimonials" onClick={(e) => handleNavigation(e, '/#testimonials')} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Testimonials</Link>
-              <Link to="/#faq" onClick={(e) => handleNavigation(e, '/#faq')} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">FAQ</Link>
-              <Link to="/#contact" onClick={(e) => handleNavigation(e, '/#contact')} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Contact</Link>
-            </nav>
-            
-            <div className="pt-6 border-t border-gray-100">
-              <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full">
-                <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
-                  WhatsApp Us
-                </Button>
-              </a>
             </div>
-          </div>
-        </div>
-      </div>
-    </header>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.header>
   );
 };
 

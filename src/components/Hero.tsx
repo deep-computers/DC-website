@@ -88,8 +88,8 @@ const TiltCard = ({ children, className = "" }) => {
       }}
       transition={{
         type: "spring",
-        stiffness: 400,
-        damping: 30,
+        stiffness: 300,
+        damping: 35,
       }}
       whileHover={{
         boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
@@ -125,8 +125,8 @@ const TiltCard = ({ children, className = "" }) => {
           }}
           transition={{
             type: "spring",
-            stiffness: 100,
-            damping: 20,
+            stiffness: 80,
+            damping: 25,
             mass: 0.8,
           }}
         />
@@ -180,7 +180,7 @@ const AnimatedText = ({ text, className = "", once = false }) => {
           transition={{
             duration: 0.7,
             delay: i * 0.12,
-            ease: [0.2, 0.65, 0.3, 0.9]
+            ease: "easeInOut"
           }}
         >
           {word.split('').map((char, j) => (
@@ -192,7 +192,7 @@ const AnimatedText = ({ text, className = "", once = false }) => {
               transition={{
                 duration: 0.4,
                 delay: i * 0.12 + j * 0.04,
-                ease: [0.2, 0.65, 0.3, 0.9]
+                ease: "easeInOut"
               }}
             >
               {char}
@@ -220,9 +220,9 @@ const Hero = () => {
   
   // Function to handle quote rotation with enhanced animation
   const rotateQuote = async () => {
-    await animate(scope.current, { opacity: 0, y: -15, filter: "blur(5px)" }, { duration: 0.5 });
+    await animate(scope.current, { opacity: 0, y: -15, filter: "blur(5px)" }, { duration: 0.5, ease: "easeInOut" });
       setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
-    await animate(scope.current, { opacity: 1, y: 0, filter: "blur(0px)" }, { duration: 0.7, delay: 0.2 });
+    await animate(scope.current, { opacity: 1, y: 0, filter: "blur(0px)" }, { duration: 0.7, delay: 0.2, ease: "easeInOut" });
   };
   
   // Setup automatic rotation
