@@ -839,8 +839,8 @@ Files: ${files.map(f => f.name).join(', ')}
                       </p>
                       <p className="flex items-center text-sm">
                         <span className="font-medium mr-2">Email:</span>
-                        <a href="mailto:deepcomputers1@gmail.com" className="text-blue-600 hover:underline">
-                          deepcomputers1@gmail.com
+                        <a href="mailto:services@dcprintingpress.com" className="text-blue-600 hover:underline">
+                          services@dcprintingpress.com
                         </a>
                     </p>
                   </div>
