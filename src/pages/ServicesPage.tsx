@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowRight, Printer, BookOpen, FileText, MessageCircle, CheckCircle, ShieldCheck, BadgeCheck, Star } from "lucide-react";
+import { ArrowRight, Printer, BookOpen, FileText, MessageCircle, CheckCircle, ShieldCheck, BadgeCheck, Star, Layout, Image, CreditCard, Copy, PanelLeft, Monitor, Sticker, FileType, Folder } from "lucide-react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 
 const ServicesPage = () => {
@@ -14,6 +14,7 @@ const ServicesPage = () => {
   const academicWritingRef = useRef<HTMLDivElement>(null);
   const plagiarismRef = useRef<HTMLDivElement>(null);
   const editingRef = useRef<HTMLDivElement>(null);
+  const designServicesRef = useRef<HTMLDivElement>(null);
 
   // Function to scroll to a specific service section
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
@@ -222,6 +223,168 @@ const ServicesPage = () => {
       category: "binding"
     },
     {
+      icon: <Layout className="h-6 w-6 text-white" />,
+      title: "Flex Printing",
+      description: "High-quality, durable prints for all outdoor and indoor advertising needs.",
+      details: [
+        "Weather-resistant materials",
+        "Vibrant color reproduction",
+        "Available in various sizes",
+        "Custom designs and layouts",
+        "Quick turnaround time",
+        "Suitable for banners, hoardings, and signage"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Flex%20Printing%20services",
+      actionText: "WhatsApp for Pricing",
+      category: "printing"
+    },
+    {
+      icon: <Image className="h-6 w-6 text-white" />,
+      title: "Vinyl Printing",
+      description: "Precision vinyl graphics for branding, signage, and décor.",
+      details: [
+        "High-resolution printing",
+        "Durable and long-lasting",
+        "Available in various finishes",
+        "Custom shapes and sizes",
+        "Indoor and outdoor options",
+        "Perfect for vehicle graphics, window displays, and wall decals"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Vinyl%20Printing%20services",
+      actionText: "WhatsApp for Pricing",
+      category: "printing"
+    },
+    {
+      icon: <CreditCard className="h-6 w-6 text-white" />,
+      title: "Business & Visiting Cards",
+      description: "Premium card designs that leave a lasting impression.",
+      details: [
+        "Multiple paper options",
+        "Standard and custom sizes",
+        "Single and double-sided printing",
+        "Matte and glossy finishes",
+        "Embossed and spot UV options",
+        "Fast turnaround time"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Business%20Card%20services",
+      actionText: "WhatsApp for Pricing",
+      category: "design-services"
+    },
+    {
+      icon: <Copy className="h-6 w-6 text-white" />,
+      title: "Digital Printing",
+      description: "Fast, vibrant, and cost-effective printing for all purposes.",
+      details: [
+        "High-resolution output",
+        "Full-color and black & white options",
+        "Multiple paper types and weights",
+        "Small and large quantity orders",
+        "Fast turnaround time",
+        "Perfect for flyers, brochures, and marketing materials"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Digital%20Printing%20services",
+      actionText: "WhatsApp for Pricing",
+      category: "printing"
+    },
+    {
+      icon: <Folder className="h-6 w-6 text-white" />,
+      title: "Custom Book Printing",
+      description: "Tailored book printing solutions for authors, institutions, and businesses.",
+      details: [
+        "Hardcover and paperback options",
+        "Various paper types and finishes",
+        "Full-color and black & white printing",
+        "Custom sizes and formats",
+        "Professional binding options",
+        "Small and large print runs"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Custom%20Book%20Printing%20services",
+      actionText: "WhatsApp for Pricing",
+      badge: "Custom",
+      category: "printing"
+    },
+    {
+      icon: <PanelLeft className="h-6 w-6 text-white" />,
+      title: "Backlit Boards",
+      description: "Eye-catching illuminated displays to make your brand shine, day or night.",
+      details: [
+        "High-quality backlit film",
+        "Vibrant color reproduction",
+        "LED and traditional lighting options",
+        "Custom sizes and shapes",
+        "Weather-resistant construction",
+        "Ideal for indoor and outdoor signage"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Backlit%20Board%20services",
+      actionText: "WhatsApp for Pricing",
+      category: "printing"
+    },
+    {
+      icon: <Monitor className="h-6 w-6 text-white" />,
+      title: "Sign Boards & LED Boards",
+      description: "Creative signage solutions, including energy-efficient LED options.",
+      details: [
+        "Variety of materials (acrylic, metal, wood)",
+        "LED and non-LED options",
+        "Indoor and outdoor applications",
+        "Custom shapes and sizes",
+        "Illuminated and non-illuminated designs",
+        "Durable construction for long-term use"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Sign%20Boards%20and%20LED%20Boards",
+      actionText: "WhatsApp for Pricing",
+      category: "design-services"
+    },
+    {
+      icon: <FileText className="h-6 w-6 text-white" />,
+      title: "Pamphlets & Posters",
+      description: "Professionally designed marketing materials to elevate your message.",
+      details: [
+        "Various sizes and formats",
+        "Single and double-sided printing",
+        "Multiple paper types and finishes",
+        "Full-color and black & white options",
+        "Bulk printing discounts",
+        "Fast turnaround for urgent requirements"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Pamphlets%20and%20Posters",
+      actionText: "WhatsApp for Pricing",
+      category: "design-services"
+    },
+    {
+      icon: <FileType className="h-6 w-6 text-white" />,
+      title: "Letterhead & Envelope Design",
+      description: "Branded stationery that reinforces your professional identity.",
+      details: [
+        "Custom letterhead designs",
+        "Matching envelopes",
+        "Premium paper options",
+        "Professional logo integration",
+        "Consistent branding elements",
+        "Corporate and personal styles"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Letterhead%20and%20Envelope%20Design",
+      actionText: "WhatsApp for Pricing",
+      category: "design-services",
+      ref: designServicesRef
+    },
+    {
+      icon: <Sticker className="h-6 w-6 text-white" />,
+      title: "Stickers & Labels",
+      description: "Customized for packaging, branding, and promotions.",
+      details: [
+        "Various shapes and sizes",
+        "Waterproof and regular options",
+        "Adhesive and non-adhesive types",
+        "Roll and sheet formats",
+        "Matte, glossy, and specialty finishes",
+        "Cut-to-shape capabilities"
+      ],
+      actionLink: "https://wa.me/919311244099?text=I'm%20interested%20in%20Stickers%20and%20Labels",
+      actionText: "WhatsApp for Pricing",
+      category: "design-services"
+    },
+    {
       icon: <FileText className="h-6 w-6 text-white" />,
       title: "Academic Writing",
       description: "Expert assistance with all types of academic writing needs for students and researchers.",
@@ -330,7 +493,8 @@ const ServicesPage = () => {
     { name: 'Binding', ref: bindingRef },
     { name: 'Academic Writing', ref: academicWritingRef },
     { name: 'Plagiarism', ref: plagiarismRef },
-    { name: 'Editing', ref: editingRef }
+    { name: 'Editing', ref: editingRef },
+    { name: 'Design Services', ref: designServicesRef }
   ];
 
   return (
@@ -450,18 +614,18 @@ const ServicesPage = () => {
                     
                     <CardHeader className="pb-2 relative">
                       <div className="h-14 w-14 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] flex items-center justify-center mb-4 shadow-lg group-hover:shadow-[#D4AF37]/30 transition-all duration-300 relative overflow-hidden">
-                        {service.icon}
+                      {service.icon}
                         <div className="absolute inset-0 shimmer"></div>
-                      </div>
+                    </div>
                       <CardTitle className="font-serif text-2xl font-semibold text-gray-800 group-hover:text-[#B8860B] transition-colors duration-300">
-                        {service.title}
-                      </CardTitle>
-                    </CardHeader>
+                      {service.title}
+                    </CardTitle>
+                  </CardHeader>
                     
-                    <CardContent>
+                  <CardContent>
                       <CardDescription className="text-gray-600 mb-4 text-base">
-                        {service.description}
-                      </CardDescription>
+                      {service.description}
+                    </CardDescription>
                       
                       <motion.ul 
                         className="space-y-2 mb-4"
@@ -470,7 +634,7 @@ const ServicesPage = () => {
                         whileInView="visible"
                         viewport={{ once: true }}
                       >
-                        {service.details.map((detail, i) => (
+                      {service.details.map((detail, i) => (
                           <motion.li key={i} variants={listItemVariants} className="flex items-start text-sm">
                             <span className="flex-shrink-0 mt-1 mr-2">
                               <svg className="h-4 w-4 text-[#D4AF37]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -479,36 +643,36 @@ const ServicesPage = () => {
                             </span>
                             <span className="text-gray-700">{detail}</span>
                           </motion.li>
-                        ))}
+                      ))}
                       </motion.ul>
                       
-                      {service.actionLink && (
-                        service.actionText === "WhatsApp Us" || service.actionText === "Contact Us" ? (
-                          <a 
-                            href={service.actionLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block w-full"
-                          >
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                    {service.actionLink && (
+                      service.actionText === "WhatsApp Us" || service.actionText === "Contact Us" ? (
+                        <a 
+                          href={service.actionLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block w-full"
+                        >
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
                               className="w-full mt-2 border-green-500 text-green-500 hover:bg-gradient-to-r hover:from-green-500 hover:to-green-600 hover:text-white transition-all duration-300 hover:border-transparent hover:shadow-md group"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 mr-2">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                              </svg>
-                              {service.actionText}
-                            </Button>
-                          </a>
-                        ) : (
-                          <Link to={service.actionLink}>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 mr-2">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            {service.actionText}
+                          </Button>
+                        </a>
+                      ) : (
+                        <Link to={service.actionLink}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
                               className="w-full mt-2 border-[#D4AF37] text-[#D4AF37] hover:bg-gradient-to-r hover:from-[#D4AF37] hover:to-[#B8860B] hover:text-white transition-all duration-300 hover:border-transparent hover:shadow-md group"
-                            >
-                              {service.actionText}
+                          >
+                            {service.actionText}
                               <motion.div
                                 className="ml-2"
                                 animate={{ x: [0, 5, 0] }}
@@ -516,12 +680,12 @@ const ServicesPage = () => {
                               >
                                 <ArrowRight className="h-4 w-4" />
                               </motion.div>
-                            </Button>
-                          </Link>
-                        )
-                      )}
-                    </CardContent>
-                  </Card>
+                          </Button>
+                        </Link>
+                      )
+                    )}
+                  </CardContent>
+                </Card>
                 </motion.div>
               ))}
             </motion.div>
@@ -544,19 +708,19 @@ const ServicesPage = () => {
                   <BadgeCheck className="h-12 w-12 mx-auto text-[#D4AF37] mb-4" />
                   <h3 className="font-serif text-2xl md:text-3xl font-bold text-gray-900 mb-4">Need a Custom Service?</h3>
                   <p className="text-gray-600 mb-6 max-w-xl mx-auto text-lg">
-                    Don't see what you're looking for? Contact us for custom academic and printing solutions tailored to your specific requirements.
-                  </p>
+                  Don't see what you're looking for? Contact us for custom academic and printing solutions tailored to your specific requirements.
+                </p>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer">
+                <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer">
                       <Button className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#D4AF37] text-white transition-all duration-300 hover:shadow-lg px-6 py-6 h-auto text-base">
-                        Contact Us Now
-                      </Button>
-                    </a>
+                    Contact Us Now
+                  </Button>
+                </a>
                   </motion.div>
-                </div>
+              </div>
               </motion.div>
             </motion.div>
           </div>
