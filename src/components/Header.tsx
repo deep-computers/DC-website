@@ -169,21 +169,11 @@ const Header = () => {
         
         {/* Mobile menu button */}
         <div className="md:hidden flex items-center">
-          <a href="https://wa.me/919311244099" className="mr-3" target="_blank" rel="noreferrer">
-            <Button variant="outline" size="sm" 
-              className="relative px-2 py-1 h-7 text-xs group overflow-hidden bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0 shadow-md">
-              <span className="relative z-10">WhatsApp</span>
-            </Button>
-          </a>
           <button 
             onClick={toggleMenu}
             className="text-gray-600 hover:text-[#D4AF37] focus:outline-none transition-colors duration-300"
           >
-            {isMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+            <Menu className="h-6 w-6" />
           </button>
         </div>
       </div>
@@ -207,54 +197,54 @@ const Header = () => {
               className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               onClick={() => setIsMenuOpen(false)}
             ></motion.div>
-        <div className="absolute right-0 h-full w-64 sm:w-72 bg-white shadow-xl overflow-y-auto">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-[#D4AF37] transition-colors">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            
-            <nav className="space-y-4">
+            <div className="absolute right-0 h-full w-64 sm:w-72 bg-white shadow-xl overflow-y-auto">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
+                  <div className="flex items-center space-x-2">
+                    <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-[#D4AF37] transition-colors">
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
+                
+                <nav className="space-y-4">
                   <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Services</Link>
                   <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">About</Link>
                   <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Pricing</Link>
-              
-              <div className="py-2">
-                <p className="text-sm font-medium text-gray-500 mb-3">Order Services</p>
-                <div className="space-y-3">
+                
+                  <div className="py-2">
+                    <p className="text-sm font-medium text-gray-500 mb-3">Order Services</p>
+                    <div className="space-y-3">
                       <Link to="/print-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print Order
-                  </Link>
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print Order
+                      </Link>
                       <Link to="/binding-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Binding Order
-                  </Link>
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Binding Order
+                      </Link>
                       <Link to="/plagiarism-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <ShieldCheck className="h-4 w-4 mr-2" />
-                    Plagiarism Services
-                  </Link>
-                </div>
-              </div>
-              
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                        Plagiarism Services
+                      </Link>
+                    </div>
+                  </div>
+                
                   <Link to="/#testimonials" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Testimonials</Link>
                   <Link to="/#faq" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">FAQ</Link>
                   <Link to="/#contact" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Contact</Link>
-            </nav>
-            
-            <div className="pt-6 border-t border-gray-100">
-              <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full">
-                <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
-                  WhatsApp Us
-                </Button>
-              </a>
+                </nav>
+                
+                <div className="pt-6 border-t border-gray-100">
+                  <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full">
+                    <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
+                      WhatsApp Us
+                    </Button>
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
           </motion.div>
         )}
       </AnimatePresence>
