@@ -252,7 +252,7 @@ const About = () => {
                 {
                   name: "Rajesh",
                   role: "Digital Transformation Lead",
-                  description: "The visionary behind our online presence, ensuring we stay connected with students in the digital age. Expert in creating Research Papers, Thesis, Dissertations, and new Projects."
+                  description: "The visionary behind our online presence, ensuring we stay connected with students in the digital age."
                 },
                 {
                   name: "Mohit",
