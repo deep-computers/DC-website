@@ -178,74 +178,88 @@ const Header = () => {
         </div>
       </div>
       
-      {/* Mobile menu */}
+      {/* Mobile menu - Full screen overlay */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
-            key="mobile-menu"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className={`md:hidden fixed inset-0 z-50 transform`}
-          >
+          <div className="fixed inset-0 z-[9999] md:hidden">
+            {/* Backdrop overlay */}
             <motion.div
+              key="mobile-menu-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               onClick={() => setIsMenuOpen(false)}
-            ></motion.div>
-        <div className="absolute right-0 h-full w-64 sm:w-72 bg-white shadow-xl overflow-y-auto">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-[#D4AF37] transition-colors">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
+            />
             
-            <nav className="space-y-4">
-                  <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Services</Link>
-                  <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">About</Link>
-                  <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Pricing</Link>
-              
-              <div className="py-2">
-                <p className="text-sm font-medium text-gray-500 mb-3">Order Services</p>
-                <div className="space-y-3">
-                      <Link to="/print-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print Order
-                  </Link>
-                      <Link to="/binding-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Binding Order
-                  </Link>
-                      <Link to="/plagiarism-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
-                    <ShieldCheck className="h-4 w-4 mr-2" />
-                    Plagiarism Services
-                  </Link>
+            {/* Mobile menu panel */}
+            <motion.div 
+              key="mobile-menu-content"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="fixed top-0 right-0 bottom-0 w-[85vw] max-w-[320px] h-[100dvh] bg-white overflow-y-auto shadow-2xl">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <span className="font-serif font-bold text-xl text-[#D4AF37]">Menu</span>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setIsMenuOpen(false)} 
+                      className="p-2 text-gray-500 hover:text-[#D4AF37] transition-colors focus:outline-none"
+                      aria-label="Close menu"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
+                
+                <nav className="space-y-4">
+                  <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Services</Link>
+                  <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">About</Link>
+                  <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
+                  
+                  <div className="py-2">
+                    <p className="text-sm font-medium text-gray-500 mb-3 px-4">Order Services</p>
+                    <div className="space-y-3">
+                      <Link to="/print-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">
+                        <Printer className="h-5 w-5 mr-3 flex-shrink-0" />
+                        Print Order
+                      </Link>
+                      <Link to="/binding-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">
+                        <BookOpen className="h-5 w-5 mr-3 flex-shrink-0" />
+                        Binding Order
+                      </Link>
+                      <Link to="/plagiarism-order" onClick={toggleMenu} className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">
+                        <ShieldCheck className="h-5 w-5 mr-3 flex-shrink-0" />
+                        Plagiarism Services
+                      </Link>
+                    </div>
+                  </div>
+                  
+                  <Link to="/#testimonials" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Testimonials</Link>
+                  <Link to="/#faq" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">FAQ</Link>
+                  <Link to="/#contact" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Contact</Link>
+                </nav>
+                
+                <div className="pt-6 px-4 border-t border-gray-100">
+                  <div className="py-3">
+                    <a href="tel:+91-93112-44099" className="flex items-center text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">
+                      <Phone className="h-5 w-5 mr-3 flex-shrink-0" />
+                      +91-93112-44099
+                    </a>
+                  </div>
+                  
+                  <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full mt-4">
+                    <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#D4AF37] text-white border-0 py-5 text-base h-auto">
+                      WhatsApp Us
+                    </Button>
+                  </a>
                 </div>
               </div>
-              
-                  <Link to="/#testimonials" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Testimonials</Link>
-                  <Link to="/#faq" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">FAQ</Link>
-                  <Link to="/#contact" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors">Contact</Link>
-            </nav>
-            
-            <div className="pt-6 border-t border-gray-100">
-              <a href="https://wa.me/919311244099" target="_blank" rel="noreferrer" className="block w-full">
-                <Button variant="outline" size="sm" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white border-0">
-                  WhatsApp Us
-                </Button>
-              </a>
-            </div>
+            </motion.div>
           </div>
-        </div>
-          </motion.div>
         )}
       </AnimatePresence>
     </motion.header>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, Suspense, lazy } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,11 @@ const ServicesPage = () => {
     }
   };
 
-  // Add keyframe animations through JavaScript
+  // Add keyframe animations through CSS instead of JavaScript for better performance
   useEffect(() => {
+    // Only run heavy animations if not on a mobile device
+    const isMobile = window.innerWidth < 768;
+    
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       @keyframes float-shadow {
@@ -65,7 +68,7 @@ const ServicesPage = () => {
       }
       
       .card-animate {
-        animation: float-shadow 5s ease-in-out infinite;
+        ${!isMobile ? 'animation: float-shadow 5s ease-in-out infinite;' : ''}
       }
       
       .shine-badge {
@@ -76,7 +79,7 @@ const ServicesPage = () => {
           rgba(212, 175, 55, 0.6) 100%
         );
         background-size: 200% auto;
-        animation: gradient-shine 4s linear infinite;
+        ${!isMobile ? 'animation: gradient-shine 4s linear infinite;' : ''}
       }
       
       .shimmer {
@@ -89,7 +92,7 @@ const ServicesPage = () => {
         );
         background-size: 200px 100%;
         background-repeat: no-repeat;
-        animation: shimmer 2s infinite;
+        ${!isMobile ? 'animation: shimmer 2s infinite;' : ''}
       }
     `;
     
@@ -102,38 +105,42 @@ const ServicesPage = () => {
     };
   }, []);
   
-  // Animation variants
+  // Determine if device is mobile for optimized animations
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  
+  // Animation variants with reduced complexity for mobile
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: isMobile ? 0 : 0.1
       }
     }
   };
 
   const cardVariants = {
-    hidden: { y: 50, opacity: 0 },
+    hidden: { y: isMobile ? 20 : 50, opacity: 0 },
     visible: { 
       y: 0, 
       opacity: 1,
       transition: {
-        type: "spring",
-        stiffness: 260,
-        damping: 20
+        type: isMobile ? "tween" : "spring",
+        stiffness: isMobile ? 100 : 260,
+        damping: isMobile ? 15 : 20,
+        duration: isMobile ? 0.3 : undefined
       }
     }
   };
 
   const titleVariants = {
-    hidden: { opacity: 0, y: -20 },
+    hidden: { opacity: 0, y: isMobile ? -10 : -20 },
     visible: { 
       opacity: 1, 
       y: 0,
       transition: {
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1]
+        duration: isMobile ? 0.3 : 0.6,
+        ease: isMobile ? "easeOut" : [0.22, 1, 0.36, 1]
       }
     }
   };
@@ -143,48 +150,69 @@ const ServicesPage = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05
+        staggerChildren: isMobile ? 0 : 0.05
       }
     }
   };
 
   const listItemVariants = {
-    hidden: { opacity: 0, x: -10 },
+    hidden: { opacity: 0, x: isMobile ? 0 : -10 },
     visible: { 
       opacity: 1, 
       x: 0,
       transition: {
-        type: "spring",
-        stiffness: 500,
-        damping: 30
+        type: isMobile ? "tween" : "spring",
+        stiffness: isMobile ? 100 : 500,
+        damping: isMobile ? 15 : 30,
+        duration: isMobile ? 0.2 : undefined
       }
     }
   };
 
-  // Sparkle component for visual appeal
-  const Sparkle = ({ delay = 0, size = 4, top, left, color = "#D4AF37" }) => (
-    <motion.div
-      style={{ 
-        position: 'absolute',
-        top: `${top}%`,
-        left: `${left}%`,
-        width: size,
-        height: size,
-        backgroundColor: color,
-        borderRadius: '50%',
-      }}
-      animate={{
-        opacity: [0, 1, 0],
-        scale: [0.5, 1.2, 0.5],
-      }}
-      transition={{
-        duration: 1.5,
-        delay: delay,
-        repeat: Infinity,
-        repeatDelay: Math.random() * 3 + 2
-      }}
-    />
-  );
+  // Define interfaces for components
+  interface SparkleProps {
+    delay?: number;
+    size?: number;
+    top: number;
+    left: number;
+    color?: string;
+  }
+  
+  interface LazyCardProps {
+    children: React.ReactNode;
+    className?: string;
+  }
+
+  // Conditionally render sparkles based on device capability
+  const Sparkle = React.memo(({ delay = 0, size = 4, top, left, color = "#D4AF37" }: SparkleProps) => {
+    // Skip animations on mobile devices
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) return null;
+    
+    return (
+      <motion.div
+        style={{ 
+          position: 'absolute',
+          top: `${top}%`,
+          left: `${left}%`,
+          width: size,
+          height: size,
+          backgroundColor: color,
+          borderRadius: '50%',
+        }}
+        animate={{
+          opacity: [0, 1, 0],
+          scale: [0.5, 1.2, 0.5],
+        }}
+        transition={{
+          duration: 1.5,
+          delay: delay,
+          repeat: Infinity,
+          repeatDelay: Math.random() * 3 + 2
+        }}
+      />
+    );
+  });
 
   const services = [
     {
@@ -497,7 +525,41 @@ const ServicesPage = () => {
     { name: 'Design Services', ref: designServicesRef }
   ];
 
+  // Lazy load components to improve initial loading speed
+const LazyCard = ({ children, className }: LazyCardProps) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+  const cardRef = React.useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.disconnect();
+      }
+    };
+  }, []);
+
   return (
+    <div ref={cardRef} className={className}>
+      {isVisible ? children : <div className="h-full w-full bg-gray-100 rounded-xl animate-pulse"></div>}
+    </div>
+  );
+};
+
+return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-[#f9f7ed]">
       <Header />
       <main>
@@ -519,11 +581,15 @@ const ServicesPage = () => {
             >
               {/* Animated sparkles */}
               <div className="absolute inset-0 overflow-hidden">
-                <Sparkle top={20} left={10} delay={0.5} size={5} />
-                <Sparkle top={80} left={80} delay={1.2} size={4} />
-                <Sparkle top={30} left={90} delay={2.1} size={3} />
-                <Sparkle top={70} left={20} delay={1.7} size={6} />
-                <Sparkle top={40} left={50} delay={0.8} size={4} />
+                {!isMobile && (
+                  <>
+                    <Sparkle top={20} left={10} delay={0.5} size={5} />
+                    <Sparkle top={80} left={80} delay={1.2} size={4} />
+                    <Sparkle top={30} left={90} delay={2.1} size={3} />
+                    <Sparkle top={70} left={20} delay={1.7} size={6} />
+                    <Sparkle top={40} left={50} delay={0.8} size={4} />
+                  </>
+                )}
               </div>
               
               <motion.div
@@ -576,22 +642,24 @@ const ServicesPage = () => {
         <section className="pb-16 md:pb-24 relative">
           <div className="container px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
             <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
               variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.1 }}
+              initial={isMobile ? { opacity: 1 } : "hidden"}
+              whileInView={isMobile ? undefined : "visible"}
+              viewport={{ once: true, amount: 0.01 }}
+              animate={isMobile ? { opacity: 1 } : undefined}
             >
               {services.map((service, index) => (
                 <motion.div
                   key={index}
                   variants={cardVariants}
                   className="relative group"
-                  whileHover={{ y: -5 }}
+                  whileHover={isMobile ? {} : { y: -5 }}
                   ref={service.ref}
                   id={service.category}
                 >
-                  <Card className="h-full border border-gray-200 bg-white/90 backdrop-blur-sm transition-all hover:shadow-xl hover:border-[#D4AF37]/30 card-animate overflow-hidden">
+                  <LazyCard className="h-full">
+                    <Card className="h-full border border-gray-200 bg-white/90 backdrop-blur-sm transition-all hover:shadow-xl hover:border-[#D4AF37]/30 card-animate overflow-hidden">
                     {service.badge && (
                       <div className="absolute top-4 right-4 z-10">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-white shine-badge">
@@ -686,6 +754,7 @@ const ServicesPage = () => {
                     )}
                   </CardContent>
                 </Card>
+                  </LazyCard>
                 </motion.div>
               ))}
             </motion.div>

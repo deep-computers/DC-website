@@ -162,11 +162,12 @@ const FloatingElement = ({ children, delay = 0, yOffset = 15, xOffset = 0, rotat
   );
 };
 
-// Text animation with enhanced effects
+// Smooth text animation using clip-path and transforms
 const AnimatedText = ({ text, className = "", once = false }) => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once, margin: "-10% 0px -10% 0px" });
+  const isInView = useInView(ref, { once, amount: 0.5 });
   
+  // Apply different animation to each word without animating individual characters
   const words = text.split(' ');
   
   return (
@@ -174,30 +175,31 @@ const AnimatedText = ({ text, className = "", once = false }) => {
       {words.map((word, i) => (
         <motion.span 
           key={i} 
-          className="inline-block mx-[0.15em] first:ml-0"
-          initial={{ opacity: 0, y: 20, rotateX: 30 }}
-          animate={isInView ? { opacity: 1, y: 0, rotateX: 0 } : {}}
-          transition={{
-            duration: 0.7,
-            delay: i * 0.12,
-            ease: "easeInOut"
+          className="inline-block mx-[0.15em] first:ml-0 overflow-hidden relative"
+          style={{
+            display: 'inline-block',
+            willChange: 'transform'
           }}
         >
-          {word.split('').map((char, j) => (
-            <motion.span
-              key={j}
-              className="inline-block"
-              initial={{ opacity: 0, y: 15, scale: 0.9 }}
-              animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-              transition={{
-                duration: 0.4,
-                delay: i * 0.12 + j * 0.04,
-                ease: "easeInOut"
-              }}
-            >
-              {char}
-            </motion.span>
-          ))}
+          <motion.span
+            className="inline-block"
+            style={{
+              display: 'inline-block',
+              willChange: 'transform'
+            }}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={isInView ? {
+              y: 0,
+              opacity: 1
+            } : {}}
+            transition={{
+              duration: 0.5,
+              delay: i * 0.08,
+              ease: [0.41, 0.0, 0.07, 1.0] // Custom bezier curve for a smooth elastic feel
+            }}
+          >
+            {word}
+          </motion.span>
         </motion.span>
       ))}
     </span>
@@ -285,10 +287,20 @@ const Hero = () => {
             </FloatingElement>
             
             <h1 className="font-serif text-3xl xs:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 sm:mb-8 leading-tight relative">
-              <AnimatedText 
-                text="Academic & Printing" 
-                className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] bg-clip-text text-transparent"
-              />
+              {/* Combined header with simple, one-time animation */}
+              <motion.div
+                className="block"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.8,
+                  ease: "easeOut"
+                }}
+              >
+                <span className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] bg-clip-text text-transparent">Academic & Printing</span> Services for Students and Researchers
+              </motion.div>
+              
+              {/* Underline effect */}
               <motion.span 
                 className="absolute -z-10 bottom-2 left-0 h-4 bg-[#D4AF37]/20 w-0"
                 animate={{ 
@@ -296,10 +308,12 @@ const Hero = () => {
                   skewX: [0, -6],
                   skewY: [0, 2],
                 }}
-                transition={{ delay: 1.2, duration: 1, ease: "easeOut" }}
+                transition={{ 
+                  duration: 1.2, 
+                  ease: [0.25, 0.1, 0.25, 1.0],
+                  delay: 0.8
+                }}
               />
-              <br />
-              <AnimatedText text="Services for Students" />
             </h1>
             
             {/* Quote Slideshow with enhanced animations */}
