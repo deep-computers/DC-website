@@ -307,19 +307,19 @@ const About = () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                  ) : member.name === "Mohit" ? (
-                    <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
-                      <img 
-                        src="/images/team/Mohit.png" 
-                        alt="Mohit" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
                   ) : member.name === "Rohan Chauhan" ? (
                       <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                         <img 
                           src="/images/team/Rohan.png" 
                           alt="Rohan Chauhan" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                  ) : member.name === "Mohit" ? (
+                      <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
+                        <img 
+                          src="/images/team/Mohit.png" 
+                          alt="Mohit" 
                           className="w-full h-full object-cover"
                         />
                       </div>
