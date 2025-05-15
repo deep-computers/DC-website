@@ -79,6 +79,10 @@ const Header = () => {
         
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center space-x-3 lg:space-x-6">
+          <Link to="/" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+            Home
+            <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
+          </Link>
           <Link to="/services" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Services
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
@@ -216,6 +220,7 @@ const Header = () => {
                 </div>
                 
                 <nav className="space-y-4">
+                  <Link to="/" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Home</Link>
                   <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Services</Link>
                   <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">About</Link>
                   <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
