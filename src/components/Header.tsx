@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Phone, Menu, X, Printer, BookOpen, FileText, ChevronDown, ShieldCheck, MapPin } from "lucide-react";
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,25 +24,39 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Listen for section parameter in URL query instead of hash
   useEffect(() => {
-    if (location.hash) {
-      const element = document.getElementById(location.hash.substring(1));
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+    
+    if (section) {
+      const element = document.getElementById(section);
       if (element) {
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
+          // Clean up URL after scrolling
+          navigate(location.pathname, { replace: true });
         }, 100);
       }
     }
-  }, [location]);
+  }, [location, navigate]);
 
   const handleNavigation = (e: React.MouseEvent, path: string) => {
-    if (location.pathname === '/') {
-      e.preventDefault();
-      const element = document.getElementById(path.substring(2));
+    e.preventDefault();
+    const sectionId = path.substring(2); // Remove the '/#' part
+    
+    if (location.pathname === '/home') {
+      // Already on home page, just scroll to the element
+      const element = document.getElementById(sectionId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
       }
+    } else {
+      // On another page, navigate to home page with section in query params
+      // This will trigger the useEffect above which will scroll and then clean the URL
+      navigate(`/home?section=${sectionId}`);
     }
+    
     setIsMenuOpen(false);
   };
 
@@ -61,7 +76,7 @@ const Header = () => {
     }`}>
       <div className="container px-3 xs:px-4 sm:px-6 lg:px-8 flex h-14 sm:h-16 md:h-18 justify-between items-center">
         <div className="flex items-center">
-          <Link to="/" className="flex items-center group">
+          <Link to="/home" className="flex items-center group">
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-[#D4AF37]/30 to-[#B8860B]/30 rounded-full blur-md transition-all duration-300 group-hover:blur-lg"></div>
               <img 
@@ -79,7 +94,7 @@ const Header = () => {
         
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center space-x-3 lg:space-x-6">
-          <Link to="/" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Home
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
@@ -91,7 +106,7 @@ const Header = () => {
             About
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
-          <Link to="/#pricing" onClick={(e) => handleNavigation(e, '/#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '/#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Pricing
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
@@ -126,15 +141,17 @@ const Header = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Link to="/#testimonials" onClick={(e) => handleNavigation(e, '/#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '/#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Testimonials
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
-          <Link to="/#faq" onClick={(e) => handleNavigation(e, '/#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          
+          <Link to="/home" onClick={(e) => handleNavigation(e, '/#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             FAQ
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
-          <Link to="/#contact" onClick={(e) => handleNavigation(e, '/#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          
+          <Link to="/home" onClick={(e) => handleNavigation(e, '/#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Contact
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
@@ -220,10 +237,10 @@ const Header = () => {
                 </div>
                 
                 <nav className="space-y-4">
-                  <Link to="/" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Home</Link>
+                  <Link to="/home" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Home</Link>
                   <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Services</Link>
                   <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">About</Link>
-                  <Link to="/#pricing" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
                   
                   <div className="py-2">
                     <p className="text-sm font-medium text-gray-500 mb-3 px-4">Order Services</p>
@@ -243,9 +260,9 @@ const Header = () => {
                     </div>
                   </div>
                   
-                  <Link to="/#testimonials" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Testimonials</Link>
-                  <Link to="/#faq" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">FAQ</Link>
-                  <Link to="/#contact" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Contact</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Testimonials</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">FAQ</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Contact</Link>
                 </nav>
                 
                 <div className="pt-6 px-4 border-t border-gray-100">

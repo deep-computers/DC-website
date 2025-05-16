@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import ScrollToTop from "./components/ui/ScrollToTop";
+import WelcomePage from "./pages/WelcomePage";
 import Index from "./pages/Index";
 import PrintOrder from "./pages/PrintOrder";
 import BindingOrder from "./pages/BindingOrder";
@@ -26,7 +27,8 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/home" element={<Index />} />
             <Route path="/print-order" element={<PrintOrder />} />
             <Route path="/binding-order" element={<BindingOrder />} />
             <Route path="/plagiarism-order" element={<PlagiarismOrder />} />
