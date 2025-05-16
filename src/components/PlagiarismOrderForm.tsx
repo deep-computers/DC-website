@@ -1046,8 +1046,11 @@ Files: ${files.map(f => f.name).join(', ')}
                                 <p className="text-sm font-medium mb-3 text-amber-700">Scan QR Code to Pay</p>
                                 <div className="p-1 bg-white rounded-xl border border-yellow-200 shadow-sm">
                                   <img 
-                                    src="/images/payment-qr.jpg" 
+                                    src="/images/payment-qr.webp" 
                                     alt="Payment QR Code" 
+                                    width="144"
+                                    height="144"
+                                    loading="lazy"
                                     className="h-36 w-36 object-contain rounded-lg" 
                                   />
                                 </div>

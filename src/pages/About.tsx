@@ -281,40 +281,55 @@ const About = () => {
                   {member.name === "Deep Nagar" ? (
                     <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                       <img 
-                        src="/images/team/Deepak.png" 
+                        src="/images/team/Deepak.webp" 
                         alt="Deep Nagar" 
+                        width="96"
+                        height="96"
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   ) : member.name === "Rajesh" ? (
                     <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                       <img 
-                        src="/images/team/Rajesh.png" 
+                        src="/images/team/Rajesh.webp" 
                         alt="Rajesh" 
+                        width="96"
+                        height="96"
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   ) : member.name === "Vipin" ? (
                     <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                       <img 
-                        src="/images/team/Vipin.png" 
+                        src="/images/team/Vipin.webp" 
                         alt="Vipin" 
+                        width="96"
+                        height="96"
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   ) : member.name === "Rohan Chauhan" ? (
                       <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                         <img 
-                          src="/images/team/Rohan.png" 
+                          src="/images/team/Rohan.webp" 
                           alt="Rohan Chauhan" 
+                          width="96"
+                          height="96"
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       </div>
                   ) : member.name === "Mohit" ? (
                       <div className="h-24 w-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-[#D4AF37]/30">
                         <img 
-                          src="/images/team/Mohit.png" 
+                          src="/images/team/Mohit.webp" 
                           alt="Mohit" 
+                          width="96"
+                          height="96"
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       </div>

@@ -1,17 +1,34 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// Import motion directly to avoid errors with TypeScript
 import { motion } from 'framer-motion';
+
+// For production, you could implement code splitting with dynamic imports:
+// const motion = lazy(() => import('framer-motion').then(mod => ({ default: mod.motion })));
+// and wrap each motion component with Suspense
 
 const WelcomePage = () => {
   const navigate = useNavigate();
-
-  // Auto-navigate after 5 seconds
+  
+  // Preload key assets for better performance  
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/home');
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [navigate]);
+    // Prefetch necessary assets in the background
+    const preloadAssets = () => {
+      // Preload key pages and resources
+      const pagesToPreload = ['/home', '/services', '/about'];
+      pagesToPreload.forEach(page => {
+        const preloadLink = document.createElement('link');
+        preloadLink.rel = 'prefetch';
+        preloadLink.as = 'document';
+        preloadLink.href = page;
+        document.head.appendChild(preloadLink);
+      });
+    };
+    
+    // Start preloading immediately
+    preloadAssets();
+  }, []);
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -81,8 +98,12 @@ const WelcomePage = () => {
           <div className="relative w-32 h-32 mx-auto mb-4 group">
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] blur-md opacity-70 group-hover:opacity-100 transition-opacity duration-500"></div>
             <img 
-              src="/images/brand/logo.png" 
+              src="/images/brand/logo.webp" 
               alt="Deep Computers Logo" 
+              width="128"
+              height="128"
+              fetchPriority="high"
+              decoding="async"
               className="relative h-full w-full object-cover rounded-full p-1"
               onError={(e) => e.currentTarget.style.display = 'none'} 
             />
@@ -127,9 +148,15 @@ const WelcomePage = () => {
             <span className="absolute bottom-0 left-0 w-full h-1 bg-white opacity-20"></span>
           </button>
           
-          <div className="mt-4 text-[#A9A9A9] text-sm animate-pulse">
-            Auto-redirecting in moments...
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5, duration: 0.5 }}
+            className="flex items-center justify-center mt-5 space-x-3">
+            <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#D4AF37]/40"></span>
+            <span className="text-[#A9A9A9] text-sm font-light">PREMIUM SERVICES AWAIT</span>
+            <span className="h-[1px] w-12 bg-gradient-to-r from-[#D4AF37]/40 to-transparent"></span>
+          </motion.div>
         </motion.div>
         
         <motion.div 

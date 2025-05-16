@@ -80,8 +80,11 @@ const Header = () => {
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-[#D4AF37]/30 to-[#B8860B]/30 rounded-full blur-md transition-all duration-300 group-hover:blur-lg"></div>
               <img 
-                src="/images/brand/logo.png" 
+                src="/images/brand/logo.webp" 
                 alt="Deep Computers Logo" 
+                width="48"
+                height="48"
+                fetchPriority="high"
                 className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 mr-2 sm:mr-3 transition-transform duration-300 group-hover:scale-105 rounded-full object-cover"
               />
             </div>
@@ -106,7 +109,7 @@ const Header = () => {
             About
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
-          <Link to="/home" onClick={(e) => handleNavigation(e, '/#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '#pricing')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Pricing
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
@@ -141,17 +144,17 @@ const Header = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Link to="/home" onClick={(e) => handleNavigation(e, '/#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '#testimonials')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Testimonials
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
           
-          <Link to="/home" onClick={(e) => handleNavigation(e, '/#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '#faq')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             FAQ
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
           
-          <Link to="/home" onClick={(e) => handleNavigation(e, '/#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
+          <Link to="/home" onClick={(e) => handleNavigation(e, '#contact')} className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#D4AF37] transition-colors duration-300 relative group">
             Contact
             <span className="absolute left-1/2 bottom-0 h-0.5 w-0 origin-center transform -translate-x-1/2 bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
           </Link>
@@ -240,7 +243,7 @@ const Header = () => {
                   <Link to="/home" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Home</Link>
                   <Link to="/services" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Services</Link>
                   <Link to="/about" onClick={toggleMenu} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">About</Link>
-                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '#pricing'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Pricing</Link>
                   
                   <div className="py-2">
                     <p className="text-sm font-medium text-gray-500 mb-3 px-4">Order Services</p>
@@ -260,9 +263,9 @@ const Header = () => {
                     </div>
                   </div>
                   
-                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Testimonials</Link>
-                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">FAQ</Link>
-                  <Link to="/home" onClick={(e) => {handleNavigation(e, '/#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Contact</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '#testimonials'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Testimonials</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '#faq'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">FAQ</Link>
+                  <Link to="/home" onClick={(e) => {handleNavigation(e, '#contact'); toggleMenu();}} className="block text-base font-medium text-gray-700 hover:text-[#D4AF37] transition-colors py-3 px-4">Contact</Link>
                 </nav>
                 
                 <div className="pt-6 px-4 border-t border-gray-100">

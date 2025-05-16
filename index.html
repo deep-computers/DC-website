@@ -7,9 +7,9 @@
     <meta name="description" content="Professional printing, binding, and academic assistance services including thesis writing, plagiarism checking, and more." />
     <meta name="author" content="Deep Computers" />
 
-    <link rel="icon" type="image/png" href="/images/brand/logo.png" />
-    <link rel="apple-touch-icon" href="/images/brand/logo.png" />
-    <link rel="shortcut icon" type="image/png" href="/images/brand/logo.png" />
+    <link rel="icon" type="image/webp" href="/images/brand/logo.webp" />
+    <link rel="apple-touch-icon" href="/images/brand/logo.webp" />
+    <link rel="shortcut icon" type="image/webp" href="/images/brand/logo.webp" />
 
     <meta property="og:title" content="Deep Computers - Printing & Academic Services" />
     <meta property="og:description" content="Professional printing, binding, and academic assistance services including thesis writing, plagiarism checking, and more." />
@@ -22,7 +22,17 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    </noscript>
+    
+    <!-- Critical CSS -->    
+    <link rel="stylesheet" href="/critical.css" media="all" />
+
+    <!-- Resource hints for improved performance -->
+    <link rel="preconnect" href="/" crossorigin />
+    <link rel="dns-prefetch" href="/" />
     
     <!-- Start Single Page Apps for GitHub Pages -->
     <script type="text/javascript">
@@ -45,6 +55,14 @@
 
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Initial page skeleton to improve perceived load time -->
+    <script>
+      // Add a page skeleton while content loads
+      document.getElementById('root').innerHTML = '<div class="content-placeholder" style="height: 100vh; width: 100%;"></div>';
+    </script>
+    <script type="module" src="/src/main.tsx" defer></script>
+    
+    <!-- Preload important assets -->
+    <link rel="preload" as="image" href="/images/brand/logo.webp" fetchpriority="high" />
   </body>
 </html>

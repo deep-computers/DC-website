@@ -46,7 +46,7 @@ const Footer = () => {
               <div className="relative">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#D4AF37]/50 to-[#B8860B]/50 rounded-full blur-md transition-all duration-300 group-hover:blur-lg dark:from-[#E5C158]/60 dark:to-[#D4AF37]/60 dark:blur-lg animate-pulse"></div>
                 <img 
-                  src="/images/brand/logo.png" 
+                  src="/images/brand/logo.webp" 
                   alt="Deep Computers Logo" 
                   className="relative w-14 h-14 mr-3 transition-transform duration-300 group-hover:scale-105 rounded-full object-cover dark:shadow-[0_0_15px_rgba(212,175,55,0.4)]"
                 />
@@ -250,7 +250,7 @@ const Footer = () => {
       </button>
 
       {/* CSS for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
