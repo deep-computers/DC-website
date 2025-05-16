@@ -89,14 +89,12 @@ const PlagiarismOrderForm = () => {
     aiCheck: {
       '1-50': 399,
       '51-100': 699,
-      '101-150': 1099,
-      '151+': 1499,
+      // No AI services for pages above 100
     },
     aiRemoval: {
-      '1-50': 899,
-      '51-100': 1699,
-      '101-150': 2099,
-      '151+': 2499,
+      '1-50': 1599,
+      '51-100': 2999,
+      // No AI services for pages above 100
     },
   };
 
@@ -178,12 +176,32 @@ const PlagiarismOrderForm = () => {
       totalPages += file.totalPages || 0;
     });
     
+    // Check if total pages exceed the maximum limit (150 pages)
+    if (totalPages > 150) {
+      toast.error("Documents exceeding 150 pages are not eligible for our online services. Please contact us directly for custom solutions.");
+      // Reset all service selections
+      setSelectedServices({
+        plagiarismCheck: false,
+        plagiarismRemoval: false,
+        aiCheck: false,
+        aiRemoval: false
+      });
+      setPricingInfo(null);
+      return;
+    }
+    
     // Determine page range
     let pageRange = "1-50";
-    if (totalPages > 150) {
-      pageRange = "151+";
-    } else if (totalPages > 100) {
+    if (totalPages > 100) {
       pageRange = "101-150";
+      
+      // If pages are between 100-150, deselect AI services
+      if (services.aiCheck || services.aiRemoval) {
+        toast.warning("AI services are not available for documents over 100 pages. Only plagiarism services can be selected.");
+        const updatedServices = { ...services, aiCheck: false, aiRemoval: false };
+        setSelectedServices(updatedServices);
+        services = updatedServices;
+      }
     } else if (totalPages > 50) {
       pageRange = "51-100";
     }
@@ -205,15 +223,25 @@ const PlagiarismOrderForm = () => {
     }
     
     if (services.aiCheck) {
-      const price = servicePrices.aiCheck[pageRange as keyof typeof servicePrices.aiCheck];
-      totalPrice += price;
-      serviceSummary.push(`AI Content Check: ₹${price}`);
+      // Only process if pages are within limit (already checked above, this is a safety check)
+      if (totalPages <= 100) {
+        const price = servicePrices.aiCheck[pageRange as keyof typeof servicePrices.aiCheck];
+        if (price) {
+          totalPrice += price;
+          serviceSummary.push(`AI Content Check: ₹${price}`);
+        }
+      }
     }
     
     if (services.aiRemoval) {
-      const price = servicePrices.aiRemoval[pageRange as keyof typeof servicePrices.aiRemoval];
-      totalPrice += price;
-      serviceSummary.push(`AI Content Removal: ₹${price}`);
+      // Only process if pages are within limit (already checked above, this is a safety check)
+      if (totalPages <= 100) {
+        const price = servicePrices.aiRemoval[pageRange as keyof typeof servicePrices.aiRemoval];
+        if (price) {
+          totalPrice += price;
+          serviceSummary.push(`AI Content Removal: ₹${price}`);
+        }
+      }
     }
     
     setPricingInfo({
@@ -227,8 +255,22 @@ const PlagiarismOrderForm = () => {
     });
   };
 
-  // Update handlers for service selection
   const handleServiceChange = (service: keyof typeof selectedServices, checked: boolean) => {
+    // Calculate total pages
+    const totalPages = files.reduce((sum, file) => sum + (file.totalPages || 0), 0);
+    
+    // Check if document exceeds maximum page limit (150 pages)
+    if (totalPages > 150) {
+      toast.error("Documents exceeding 150 pages are not eligible for our online services. Please contact us directly for custom solutions.");
+      return; // Prevent selection of any services
+    }
+    
+    // Check if trying to select AI services for documents over 100 pages
+    if (checked && (service === 'aiCheck' || service === 'aiRemoval') && totalPages > 100) {
+      toast.error(`AI ${service === 'aiCheck' ? 'Content Check' : 'Content Removal'} is not available for documents over 100 pages. Only plagiarism services can be selected for documents between 101-150 pages.`);
+      return; // Prevent selection
+    }
+    
     const updatedServices = { ...selectedServices, [service]: checked };
     
     // If selecting removal, uncheck check for the same category
@@ -258,7 +300,7 @@ const PlagiarismOrderForm = () => {
     const { name, value } = e.target;
     setContactInfo(prev => ({ ...prev, [name]: value }));
   };
-
+  
   const handleSpecificationsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setSpecifications(e.target.value);
   };
@@ -754,6 +796,14 @@ Files: ${files.map(f => f.name).join(', ')}
                           <p className="text-xs text-gray-500 mt-2">
                             Choose at least one service. You can combine traditional and AI services for comprehensive coverage.
                           </p>
+                          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs font-medium text-amber-800 flex items-start">
+                              <svg className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              <span><strong>Important Service Limitations:</strong> Plagiarism services are not available for documents exceeding 150 pages. AI check and removal services are limited to documents with 100 pages or fewer. For larger documents, please contact us directly at +91-9311244099 for custom solutions.</span>
+                            </p>
+                          </div>
                         </div>
                       </div>
                       

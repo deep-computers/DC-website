@@ -265,11 +265,6 @@ const About = () => {
                   description: "A master of Screen Printing with over 30 years of experience in the field, ensuring the highest quality in all printing work."
                 },
                 {
-                  name: "Rohan Chauhan",
-                  role: "Customer Relations",
-                  description: "A highly energetic young professional capable of working non-stop for 8 hours, building lasting relationships with our students and ensuring their satisfaction."
-                },
-                {
                   name: "Vipin",
                   role: "Binding Expert",
                   description: "A master in both Hard Binding and Soft Binding techniques. Also skilled in Screen Printing, providing backup support when needed."

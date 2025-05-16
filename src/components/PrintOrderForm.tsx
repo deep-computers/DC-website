@@ -152,25 +152,44 @@ const PrintOrderForm = () => {
       return;
     }
     
-    // Only use manual counts
-    const totalPages = bwCount + colorCount;
-    const totalColorPages = colorCount;
-    const bwPages = bwCount;
+    // Get page counts from user input
+    const bwPages = parseInt(String(bwCount), 10) || 0;
+    const colorPages = parseInt(String(colorCount), 10) || 0;
+    const totalPages = bwPages + colorPages;
     
-    // Calculate paper/printing prices
-    const bwPrice = bwPages * prices.bw[gsmType as keyof typeof prices.bw] * copyCount;
-    const colorPrice = totalColorPages * prices.color[gsmType as keyof typeof prices.color] * copyCount;
-    const printPrice = bwPrice + colorPrice;
+    if (totalPages === 0) {
+      setPricingInfo(null);
+      return;
+    }
+    
+    // Get the correct price per page based on GSM
+    const bwPricePerPage = prices.bw[gsmType as keyof typeof prices.bw] || prices.bw.normal;
+    const colorPricePerPage = prices.color[gsmType as keyof typeof prices.color] || prices.color.normal;
+    
+    // Calculate costs
+    const bwCost = bwPages * bwPricePerPage;
+    const colorCost = colorPages * colorPricePerPage;
+    const basePrintPrice = bwCost + colorCost;
+    
+    // Apply copies multiplier
+    const copiesCount = Math.max(1, parseInt(String(copyCount), 10));
+    const totalPrintPrice = basePrintPrice * copiesCount;
+    
+    // Round to 2 decimal places for currency display
+    const roundedPrice = Math.round(totalPrintPrice * 100) / 100;
     
     setPricingInfo({
-      printPrice,
-      totalPrice: printPrice,
+      printPrice: roundedPrice,
+      totalPrice: roundedPrice,
       pageDetails: {
-        totalPages: totalPages * copyCount,
-        bwPages: bwPages * copyCount,
-        colorPages: totalColorPages * copyCount
+        totalPages: totalPages * copiesCount,
+        bwPages: bwPages * copiesCount,
+        colorPages: colorPages * copiesCount
       }
     });
+    
+    // Log for debugging
+    console.log(`Price calculation: ${bwPages} B&W pages @ ₹${bwPricePerPage} + ${colorPages} color pages @ ₹${colorPricePerPage} × ${copiesCount} copies = ₹${roundedPrice}`);
   }, [bwCount, colorCount, prices]);
 
   // Recalculate whenever inputs change
